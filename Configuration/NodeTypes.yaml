@@ -1,0 +1,24 @@
+#
+# Adjustments to some widespread types
+#
+
+'TYPO3.Neos:Document':
+  options:
+    Flownative:
+      Neos:
+        Trados:
+          properties:
+            twitterCardType:
+              skip: true
+            twitterCardCreator:
+              skip: true
+            openGraphType:
+              skip: true
+            xmlSitemapChangeFrequency:
+              skip: true
+            xmlSitemapPriority:
+              skip: true
+            layout:
+              skip: true
+            subpageLayout:
+              skip: true

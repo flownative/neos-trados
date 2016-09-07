@@ -1,0 +1,14 @@
+{
+  "name": "flownative/neos-trados",
+  "type": "neos-flow-package",
+  "license": "MIT",
+  "description": "XML import/export for Neos, suited for Trados translations",
+  "require": {
+    "neos": "~2.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Flownative\\Neos\\Trados\\": "Classes"
+    }
+  }
+}

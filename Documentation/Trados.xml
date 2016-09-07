@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<content name="Neos Demo Site" sitePackageKey="Neos.Demo" workspace="live" sourceLanguage="en" targetLanguage="cz">
+    <nodes formatVersion="1.0">
+        <node identifier="995c9174-ddd6-4d5c-cfc0-1ffc82184677" nodeName="neosdemo">
+            <variant nodeType="Neos.Demo:Homepage">
+                <dimensions>
+                    <country>us</country>
+                    <language>en_US</language>
+                </dimensions>
+                <properties>
+                    <title type="string">Home</title>
+                    <layout type="string">landingPage</layout>
+                    <uriPathSegment type="string">home</uriPathSegment>
+                    <canonicalLink type="string"/>
+                </properties>
+            </variant>
+        </node>
+        <node identifier="517ad799-35df-4324-9429-5c75629a8b34" nodeName="download">
+            <variant nodeType="TYPO3.Neos.NodeTypes:Page">
+                <dimensions>
+                    <country>us</country>
+                    <language>en_US</language>
+                </dimensions>
+                <properties>
+                    <title type="string">Download</title>
+                    <uriPathSegment type="string">download</uriPathSegment>
+                    <canonicalLink type="string"/>
+                </properties>
+            </variant>
+        </node>
+        <node identifier="be9c3007-650c-5372-602e-233b7b294228" nodeName="node524d2f8cddd3d">
+            <variant nodeType="TYPO3.Neos.NodeTypes:Text">
+                <dimensions>
+                    <country>us</country>
+                    <language>en_US</language>
+                </dimensions>
+                <properties>
+                    <text type="string">&lt;p&gt;
+                        Neos is publicly available. You can download your version from the &lt;a href=&quot;https://www.neos.io/download-and-extend.html&quot; target=&quot;_blank&quot;&gt;Neos Download Page&lt;/a&gt;.&lt;/p&gt;</text>
+                </properties>
+            </variant>
+            <variant nodeType="TYPO3.Neos.NodeTypes:Text">
+                <dimensions>
+                    <country>ca</country>
+                    <language>en_US</language>
+                </dimensions>
+                <properties>
+                    <text type="string">&lt;p&gt;
+                        Neos is publicly available, eh. You can download your version from the &lt;a href=&quot;https://www.neos.io/download-and-extend.html&quot; target=&quot;_blank&quot;&gt;Neos Download Page&lt;/a&gt;.&lt;/p&gt;</text>
+                </properties>
+            </variant>
+        </node>
+        <node identifier="3b25cc50-ebac-66ab-7d70-e6a644f9327c" nodeName="untitled">
+            <variant nodeType="TYPO3.Neos.NodeTypes:Headline">
+                <dimensions>
+                    <country>us</country>
+                    <language>en_US</language>
+                </dimensions>
+                <properties>
+                    <title type="string">&lt;h1&gt;Download&lt;/h1&gt;</title>
+                </properties>
+            </variant>
+        </node>
+    </nodes>
+</content>
