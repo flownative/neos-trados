@@ -53,13 +53,17 @@ class TradosCommandController extends CommandController
             $modifiedAfter = new \DateTime($modifiedAfter);
         }
 
-        if ($filename === null) {
-            $this->output($this->exportService->exportToString($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter));
-        } else {
-            $this->exportService->exportToFile($filename, $startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter);
-            $this->outputLine('<success>The tree starting at "/sites/%s" has been exported to "%s".</success>', array($startingPoint, $filename));
-            $this->outputLine('Peak memory used: %u', array(memory_get_peak_usage()));
+        try {
+            if ($filename === null) {
+                    $this->output($this->exportService->exportToString($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter));
+            } else {
+                $this->exportService->exportToFile($filename, $startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter);
+                $this->outputLine('<success>The tree starting at "/sites/%s" has been exported to "%s".</success>', array($startingPoint, $filename));
+            }
+        } catch (\Exception $exception) {
+            $this->outputLine('<error>%s</error>', array($exception->getMessage()));
         }
+        $this->outputLine('Peak memory used: %u', array(memory_get_peak_usage()));
     }
 
     /**

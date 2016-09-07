@@ -132,6 +132,9 @@ class ExportService
         $siteNodeName = current(explode('/', $startingPoint));
         /** @var Site $site */
         $site = $this->siteRepository->findOneByNodeName($siteNodeName);
+        if ($site === null) {
+            throw new \RuntimeException(sprintf('No site found for node name "%s"', $siteNodeName), 1473241812);
+        }
 
         /** @var ContentContext $contentContext */
         $contentContext = $this->contextFactory->create([
