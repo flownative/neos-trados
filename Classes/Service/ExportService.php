@@ -76,6 +76,12 @@ class ExportService
     protected $securityContext;
 
     /**
+     * @Flow\Inject
+     * @var \TYPO3\TYPO3CR\Domain\Service\ContentDimensionCombinator
+     */
+    protected $contentDimensionCombinator;
+
+    /**
      * Fetches the site with the given name and exports it into XML.
      *
      * @param string $startingPoint
@@ -123,12 +129,11 @@ class ExportService
      * @param string $sourceLanguage
      * @param string $targetLanguage
      * @param \DateTime $modifiedAfter
+     * @param string $workspaceName
      * @return void
      */
-    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $workspaceName = 'live')
     {
-        $this->xmlWriter->startDocument('1.0', 'UTF-8');
-
         $siteNodeName = current(explode('/', $startingPoint));
         /** @var Site $site */
         $site = $this->siteRepository->findOneByNodeName($siteNodeName);
@@ -138,24 +143,29 @@ class ExportService
 
         /** @var ContentContext $contentContext */
         $contentContext = $this->contextFactory->create([
+            'workspaceName' => $workspaceName,
             'currentSite' => $site,
-            'invisibleContentShown' => true,
-            'inaccessibleContentShown' => true
+            'invisibleContentShown' => false,
+            'removedContentShown' => false
         ]);
 
+        $this->xmlWriter->startDocument('1.0', 'UTF-8');
         $this->xmlWriter->startElement('content');
+
         $this->xmlWriter->writeAttribute('name', $site->getName());
         $this->xmlWriter->writeAttribute('sitePackageKey', $site->getSiteResourcesPackageKey());
-        $this->xmlWriter->writeAttribute('workspace', 'live');
+        $this->xmlWriter->writeAttribute('workspace', $workspaceName);
         $this->xmlWriter->writeAttribute('sourceLanguage', $sourceLanguage);
         if ($targetLanguage !== null) {
             $this->xmlWriter->writeAttribute('targetLanguage', $targetLanguage);
+        }
+        if ($modifiedAfter !== null) {
+            $this->xmlWriter->writeAttribute('modifiedAfter', $targetLanguage);
         }
 
         $this->exportNodes('/sites/' . $startingPoint, $contentContext, $sourceLanguage, $targetLanguage, $modifiedAfter);
 
         $this->xmlWriter->endElement();
-
         $this->xmlWriter->endDocument();
     }
 
@@ -191,8 +201,27 @@ class ExportService
      */
     protected function findNodeDataListToExport($pathStartingPoint, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
     {
-        $parentPath = implode('/', array_slice(explode('/', $pathStartingPoint), 0, -1));
-        $nodeDataList = $this->nodeDataRepository->findByParentAndNodeType($parentPath, null, $contentContext->getWorkspace(), null, false, true);
+        $parentPath = \TYPO3\TYPO3CR\Domain\Utility\NodePaths::getParentPath($pathStartingPoint);
+
+        $allAllowedContentCombinations = $this->contentDimensionCombinator->getAllAllowedCombinations();
+
+        $allowedContentCombinations = array_filter($allAllowedContentCombinations, function ($combination) use ($sourceLanguage) {
+            return (isset($combination['language']) && $combination['language'][0] === $sourceLanguage);
+        });
+
+        $nodeDataList = [];
+        foreach ($allowedContentCombinations as $contentDimensions) {
+            $nodeDataList = array_merge(
+                $nodeDataList,
+                $this->nodeDataRepository->findByParentAndNodeType($parentPath, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown(), true)
+            );
+        }
+
+        if (!$contentContext->isInvisibleContentShown()) {
+            $nodeDataList = array_filter($nodeDataList, function (NodeData $nodeData) {
+                return !$nodeData->isHidden();
+            });
+        }
 
         // Sort nodeDataList by path, replacing "/" with "!" (the first visible ASCII character)
         // because there may be characters like "-" in the node path
