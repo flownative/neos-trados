@@ -30,6 +30,12 @@ class ExportService
     const SUPPORTED_FORMAT_VERSION = '1.0';
 
     /**
+     * @Flow\InjectConfiguration(path = "languageDimension")
+     * @var string
+     */
+    protected $languageDimension;
+
+    /**
      * The XMLWriter that is used to construct the export.
      *
      * @var \XMLWriter
@@ -206,7 +212,7 @@ class ExportService
         $allAllowedContentCombinations = $this->contentDimensionCombinator->getAllAllowedCombinations();
 
         $allowedContentCombinations = array_filter($allAllowedContentCombinations, function ($combination) use ($sourceLanguage) {
-            return (isset($combination['language']) && $combination['language'][0] === $sourceLanguage);
+            return (isset($combination[$this->languageDimension]) && $combination[$this->languageDimension][0] === $sourceLanguage);
         });
 
         $nodeDataList = [];
