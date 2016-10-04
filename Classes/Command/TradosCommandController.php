@@ -77,6 +77,12 @@ class TradosCommandController extends CommandController
      */
     public function importCommand($filename, $targetLanguage = null, $workspace = 'live')
     {
-        $this->outputLine('<error>This is not yet implemented.</error>');
+        try {
+            $this->importService->importFromFile($filename, $workspace, $targetLanguage);
+            $this->outputLine('<success>The file "%s" has been imported to language "%s" in workspace "%s".</success>', array($filename, $targetLanguage, $workspace));
+        } catch (\Exception $exception) {
+            $this->outputLine('<error>%s</error>', array($exception->getMessage()));
+        }
+        $this->outputLine('Peak memory used: %u', array(memory_get_peak_usage()));
     }
 }
