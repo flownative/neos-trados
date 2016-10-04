@@ -158,6 +158,10 @@ class ImportService
             $this->sourceLanguage = $xmlReader->getAttribute('sourceLanguage');
             $this->targetLanguage = $targetLanguage ?: $xmlReader->getAttribute('targetLanguage');
 
+            if ($this->targetLanguage === null) {
+                throw new \RuntimeException('No target language given (neither in XML nor as argument)', 1475578770);
+            }
+
             $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetByUriSegment($this->languageDimension, $this->targetLanguage);
 
             $sitePackageKey = $xmlReader->getAttribute('sitePackageKey');
