@@ -138,6 +138,7 @@ class ImportService
      * @param string $pathAndFilename
      * @param string $workspaceName
      * @param string $targetLanguage
+     * @return string
      * @throws InvalidPackageStateException
      * @throws UnknownPackageException
      */
@@ -205,6 +206,8 @@ class ImportService
                 $this->importNodes($xmlReader);
             });
         }
+
+        return $this->targetLanguage;
     }
 
     /**

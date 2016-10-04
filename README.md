@@ -20,14 +20,14 @@ The export command:
     ARGUMENTS:
       --starting-point     The node with which to start the export, relative to the
                            site node. Optional.
-      --source-language    The language to use es base for the export.
+      --source-language    The language to use as base for the export.
     
     OPTIONS:
       --target-language    The target language for the translation, optional.
       --filename           Path and filename to the XML file to create.
       --modified-after
 
-The impot command:
+The import command:
 
     Import sites content (e.g. trados:import --filename "acme.com.xml" --workspace "czech-review")
     
@@ -45,6 +45,14 @@ The impot command:
                            included in XML.
       --workspace          A workspace to import into, optional but recommended
 
+### Workflow
+
+The workflow usually goes like this:
+
+1. The site content is exported using `trados:export`
+2. The XML is translated by some translation agency
+3. The translated XML is imported into a fresh workspace using `trados:import`
+4. The changes are reviewed and published in the workspace module
 
 ## Configuration
 

@@ -41,7 +41,7 @@ class TradosCommandController extends CommandController
      * This command exports a specific site including all content into an XML format.
      *
      * @param string $startingPoint The node with which to start the export, relative to the site node. Optional.
-     * @param string $sourceLanguage The language to use es base for the export.
+     * @param string $sourceLanguage The language to use as base for the export.
      * @param string $targetLanguage The target language for the translation, optional.
      * @param string $filename Path and filename to the XML file to create.
      * @param string $modifiedAfter
@@ -78,8 +78,8 @@ class TradosCommandController extends CommandController
     public function importCommand($filename, $targetLanguage = null, $workspace = 'live')
     {
         try {
-            $this->importService->importFromFile($filename, $workspace, $targetLanguage);
-            $this->outputLine('<success>The file "%s" has been imported to language "%s" in workspace "%s".</success>', array($filename, $targetLanguage, $workspace));
+            $importedLanguage = $this->importService->importFromFile($filename, $workspace, $targetLanguage);
+            $this->outputLine('<success>The file "%s" has been imported to language "%s" in workspace "%s".</success>', array($filename, $importedLanguage, $workspace));
         } catch (\Exception $exception) {
             $this->outputLine('<error>%s</error>', array($exception->getMessage()));
         }
