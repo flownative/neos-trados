@@ -16,6 +16,7 @@ use TYPO3\Neos\Domain\Model\Site;
 use TYPO3\Neos\Domain\Service\ContentContext;
 use TYPO3\TYPO3CR\Domain\Model\NodeData;
 use TYPO3\TYPO3CR\Domain\Service\ContextFactoryInterface;
+use TYPO3\TYPO3CR\Domain\Utility\NodePaths;
 
 /**
  * The Trados Export Service
@@ -207,7 +208,7 @@ class ExportService
      */
     protected function findNodeDataListToExport($pathStartingPoint, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
     {
-        $parentPath = \TYPO3\TYPO3CR\Domain\Utility\NodePaths::getParentPath($pathStartingPoint);
+        $parentPath = NodePaths::getParentPath($pathStartingPoint);
 
         $allAllowedContentCombinations = $this->contentDimensionCombinator->getAllAllowedCombinations();
 
