@@ -1,6 +1,6 @@
 {
   "name": "flownative/neos-trados",
-  "type": "neos-flow-package",
+  "type": "typo3-flow-package",
   "license": "MIT",
   "description": "XML import/export for Neos, suited for Trados translations",
   "require": {
