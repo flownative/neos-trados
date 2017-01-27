@@ -402,7 +402,7 @@ class ImportService
             function ($values) {
                 return current($values);
             },
-            $translatedData['dimensionValues']
+            $dimensions
         );
         $targetDimensions = array_merge($targetDimensions, [$this->languageDimension => $this->targetLanguage]);
 
@@ -421,9 +421,6 @@ class ImportService
             if ($currentNodeVariant->getProperty($key) !== $value) {
                 $propertiesToSet[$key] = $value;
             }
-        }
-        if ($propertiesToSet === []) {
-            return;
         }
 
         $translatedNodeVariant = $targetContentContext->adoptNode($currentNodeVariant);
