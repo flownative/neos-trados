@@ -354,17 +354,19 @@ class ExportService
     }
 
     /**
-     * Writes out a single property into the XML structure.
+     * Writes out a single string property into the XML structure.
      *
      * @param string $propertyName The name of the property
-     * @param mixed $propertyValue The value of the property
+     * @param string $propertyValue The value of the property
      */
     protected function writeProperty($propertyName, $propertyValue)
     {
         $this->xmlWriter->startElement($propertyName);
-        $this->xmlWriter->writeAttribute('type', gettype($propertyValue));
+        $this->xmlWriter->writeAttribute('type', 'string');
         if ($propertyValue !== '' && $propertyValue !== null) {
+            $this->xmlWriter->startCData();
             $this->xmlWriter->text($propertyValue);
+            $this->xmlWriter->endCData();
         }
         $this->xmlWriter->endElement();
     }
