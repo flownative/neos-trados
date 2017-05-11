@@ -96,15 +96,16 @@ class ExportService
      * @param string $sourceLanguage
      * @param string $targetLanguage
      * @param \DateTime $modifiedAfter
+     * @param boolean $ignoreHidden
      * @return string
      */
-    public function exportToString($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    public function exportToString($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openMemory();
         $this->xmlWriter->setIndent(true);
 
-        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter);
+        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, 'live', $ignoreHidden);
 
         return $this->xmlWriter->outputMemory(true);
     }
@@ -117,15 +118,16 @@ class ExportService
      * @param string $sourceLanguage
      * @param string $targetLanguage
      * @param \DateTime $modifiedAfter
+     * @param boolean $ignoreHidden
      * @return void
      */
-    public function exportToFile($pathAndFilename, $startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    public function exportToFile($pathAndFilename, $startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openUri($pathAndFilename);
         $this->xmlWriter->setIndent(true);
 
-        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter);
+        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, 'live', $ignoreHidden);
 
         $this->xmlWriter->flush();
     }
@@ -138,9 +140,10 @@ class ExportService
      * @param string $targetLanguage
      * @param \DateTime $modifiedAfter
      * @param string $workspaceName
+     * @param boolean $ignoreHidden
      * @return void
      */
-    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $workspaceName = 'live')
+    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $workspaceName = 'live', $ignoreHidden = true)
     {
         $siteNodeName = current(explode('/', $startingPoint));
         /** @var Site $site */
@@ -153,9 +156,9 @@ class ExportService
         $contentContext = $this->contextFactory->create([
             'workspaceName' => $workspaceName,
             'currentSite' => $site,
-            'invisibleContentShown' => true,
+            'invisibleContentShown' => !$ignoreHidden,
             'removedContentShown' => false,
-            'inaccessibleContentShown' => true
+            'inaccessibleContentShown' => !$ignoreHidden
         ]);
 
         $this->xmlWriter->startDocument('1.0', 'UTF-8');
@@ -226,9 +229,9 @@ class ExportService
                 $this->nodeDataRepository->findByParentAndNodeType($pathStartingPoint, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false, true)
             );
             $sourceContexts[] = $this->contextFactory->create([
-                'invisibleContentShown' => true,
+                'invisibleContentShown' => $contentContext->isInvisibleContentShown(),
                 'removedContentShown' => false,
-                'inaccessibleContentShown' => true,
+                'inaccessibleContentShown' => $contentContext->isInaccessibleContentShown(),
                 'dimensions' => $contentDimensions
             ]);
         }
@@ -248,6 +251,7 @@ class ExportService
             $uniqueNodeDataList[$nodeData->getIdentifier()] = $nodeData;
         }
         $nodeDataList = array_filter(array_values($uniqueNodeDataList), function (NodeData $nodeData) use ($sourceContexts, $sourceLanguage) {
+            /** @var ContentContext $sourceContext */
             foreach ($sourceContexts as $sourceContext) {
                 if ($sourceContext->getDimensions()[$this->languageDimension][0] !== $sourceLanguage) {
                     continue;
@@ -258,20 +262,22 @@ class ExportService
                     if ($nodeData === null)
                         continue;
                 }
-                // filter out node if any of the parents is hidden
-                $parent = $nodeData;
-                while ($parent !== null) {
-                    if ($parent->isHidden()) {
-                        return false;
-                    }
-                    $parentNode = $sourceContext->getNode($parent->getParentPath());
-                    if (!$parentNode instanceof NodeInterface
-                        || $parentNode->getNodeData()->getDimensionValues() === []) {
-                        break;
-                    }
-                    $parent = $parentNode->getNodeData();
-                }
 
+                if (!$sourceContext->isInvisibleContentShown()) {
+                    // filter out node if any of the parents is hidden
+                    $parent = $nodeData;
+                    while ($parent !== null) {
+                        if ($parent->isHidden()) {
+                            return false;
+                        }
+                        $parentNode = $sourceContext->getNode($parent->getParentPath());
+                        if (!$parentNode instanceof NodeInterface
+                            || $parentNode->getNodeData()->getDimensionValues() === []) {
+                            break;
+                        }
+                        $parent = $parentNode->getNodeData();
+                    }
+                }
             }
 
             return $nodeData !== null;
