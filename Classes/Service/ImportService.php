@@ -257,7 +257,7 @@ class ImportService
             case 'node':
                 $this->currentNodeIdentifier = $xmlReader->getAttribute('identifier');
                 $this->currentNodeName = $xmlReader->getAttribute('nodeName');
-                $this->currentNodeVariants = $this->contentContext->getNodeVariantsByIdentifier($this->currentNodeIdentifier);
+                $this->currentNodeVariants = array_filter($this->contentContext->getNodeVariantsByIdentifier($this->currentNodeIdentifier));
             break;
             case 'variant':
                 $this->currentNodeData = [
