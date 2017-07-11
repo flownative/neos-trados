@@ -423,6 +423,11 @@ class ImportService
             }
         }
 
+        // don't adopt node if no properties have changed and there is a fallback in place
+        if ($propertiesToSet === [] && count($targetContentContext->getDimensions()[$this->languageDimension]) > 1) {
+            return;
+        }
+
         $translatedNodeVariant = $targetContentContext->adoptNode($currentNodeVariant);
         foreach ($propertiesToSet as $key => $value) {
             $translatedNodeVariant->setProperty($key, $value);
