@@ -422,7 +422,8 @@ class ImportService
                 $propertiesToSet[$key] = $value;
             }
         }
-        if ($propertiesToSet === []) {
+        // don't adopt node if no properties have changed and there is a fallback in place
+        if ($propertiesToSet === [] && count($targetContentContext->getDimensions()[$this->languageDimension]) > 1) {
             return;
         }
 
