@@ -257,7 +257,7 @@ class ImportService
             case 'node':
                 $this->currentNodeIdentifier = $xmlReader->getAttribute('identifier');
                 $this->currentNodeName = $xmlReader->getAttribute('nodeName');
-                $this->currentNodeVariants = $this->contentContext->getNodeVariantsByIdentifier($this->currentNodeIdentifier);
+                $this->currentNodeVariants = array_filter($this->contentContext->getNodeVariantsByIdentifier($this->currentNodeIdentifier));
             break;
             case 'variant':
                 $this->currentNodeData = [
@@ -402,7 +402,7 @@ class ImportService
             function ($values) {
                 return current($values);
             },
-            $translatedData['dimensionValues']
+            $dimensions
         );
         $targetDimensions = array_merge($targetDimensions, [$this->languageDimension => $this->targetLanguage]);
 
@@ -422,6 +422,7 @@ class ImportService
                 $propertiesToSet[$key] = $value;
             }
         }
+
         // don't adopt node if no properties have changed and there is a fallback in place
         if ($propertiesToSet === [] && count($targetContentContext->getDimensions()[$this->languageDimension]) > 1) {
             return;

@@ -15,6 +15,7 @@ use TYPO3\Flow\Annotations as Flow;
 use TYPO3\Neos\Domain\Model\Site;
 use TYPO3\Neos\Domain\Service\ContentContext;
 use TYPO3\TYPO3CR\Domain\Model\NodeData;
+use TYPO3\TYPO3CR\Domain\Model\NodeInterface;
 use TYPO3\TYPO3CR\Domain\Service\ContextFactoryInterface;
 use TYPO3\TYPO3CR\Domain\Utility\NodePaths;
 
@@ -95,15 +96,16 @@ class ExportService
      * @param string $sourceLanguage
      * @param string $targetLanguage
      * @param \DateTime $modifiedAfter
+     * @param boolean $ignoreHidden
      * @return string
      */
-    public function exportToString($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    public function exportToString($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openMemory();
         $this->xmlWriter->setIndent(true);
 
-        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter);
+        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, 'live', $ignoreHidden);
 
         return $this->xmlWriter->outputMemory(true);
     }
@@ -116,15 +118,16 @@ class ExportService
      * @param string $sourceLanguage
      * @param string $targetLanguage
      * @param \DateTime $modifiedAfter
+     * @param boolean $ignoreHidden
      * @return void
      */
-    public function exportToFile($pathAndFilename, $startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    public function exportToFile($pathAndFilename, $startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openUri($pathAndFilename);
         $this->xmlWriter->setIndent(true);
 
-        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter);
+        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, 'live', $ignoreHidden);
 
         $this->xmlWriter->flush();
     }
@@ -137,9 +140,10 @@ class ExportService
      * @param string $targetLanguage
      * @param \DateTime $modifiedAfter
      * @param string $workspaceName
+     * @param boolean $ignoreHidden
      * @return void
      */
-    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $workspaceName = 'live')
+    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $workspaceName = 'live', $ignoreHidden = true)
     {
         $siteNodeName = current(explode('/', $startingPoint));
         /** @var Site $site */
@@ -152,8 +156,9 @@ class ExportService
         $contentContext = $this->contextFactory->create([
             'workspaceName' => $workspaceName,
             'currentSite' => $site,
-            'invisibleContentShown' => false,
-            'removedContentShown' => false
+            'invisibleContentShown' => !$ignoreHidden,
+            'removedContentShown' => false,
+            'inaccessibleContentShown' => !$ignoreHidden
         ]);
 
         $this->xmlWriter->startDocument('1.0', 'UTF-8');
@@ -208,27 +213,75 @@ class ExportService
      */
     protected function findNodeDataListToExport($pathStartingPoint, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
     {
-        $parentPath = NodePaths::getParentPath($pathStartingPoint);
-
         $allAllowedContentCombinations = $this->contentDimensionCombinator->getAllAllowedCombinations();
 
         $allowedContentCombinations = array_filter($allAllowedContentCombinations, function ($combination) use ($sourceLanguage) {
             return (isset($combination[$this->languageDimension]) && $combination[$this->languageDimension][0] === $sourceLanguage);
         });
+        $sourceContexts = [];
 
+        /** @var NodeData[] $nodeDataList */
         $nodeDataList = [];
         foreach ($allowedContentCombinations as $contentDimensions) {
             $nodeDataList = array_merge(
                 $nodeDataList,
-                $this->nodeDataRepository->findByParentAndNodeType($parentPath, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown(), true)
+                [$contentContext->getNode($pathStartingPoint)->getNodeData()],
+                $this->nodeDataRepository->findByParentAndNodeType($pathStartingPoint, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false, true)
             );
+            $sourceContexts[] = $this->contextFactory->create([
+                'invisibleContentShown' => $contentContext->isInvisibleContentShown(),
+                'removedContentShown' => false,
+                'inaccessibleContentShown' => $contentContext->isInaccessibleContentShown(),
+                'dimensions' => $contentDimensions
+            ]);
         }
 
-        if (!$contentContext->isInvisibleContentShown()) {
-            $nodeDataList = array_filter($nodeDataList, function (NodeData $nodeData) {
-                return !$nodeData->isHidden();
-            });
+        $uniqueNodeDataList = [];
+        usort($nodeDataList, function(NodeData $node1, NodeData $node2) use ($sourceLanguage) {
+            if ($node1->getDimensionValues()[$this->languageDimension][0] === $sourceLanguage) {
+                return 1;
+            }
+            if ($node2->getDimensionValues()[$this->languageDimension][0] === $sourceLanguage) {
+                return -1;
+            }
+
+            return 0;
+        });
+        foreach ($nodeDataList as $nodeData) {
+            $uniqueNodeDataList[$nodeData->getIdentifier()] = $nodeData;
         }
+        $nodeDataList = array_filter(array_values($uniqueNodeDataList), function (NodeData $nodeData) use ($sourceContexts, $sourceLanguage) {
+            /** @var ContentContext $sourceContext */
+            foreach ($sourceContexts as $sourceContext) {
+                if ($sourceContext->getDimensions()[$this->languageDimension][0] !== $sourceLanguage) {
+                    continue;
+                }
+                if ($nodeData->getDimensionValues()[$this->languageDimension][0] !== $sourceLanguage) {
+                    // "reload" nodedata in correct dimension
+                    $nodeData = $sourceContext->getNodeByIdentifier($nodeData->getIdentifier())->getNodeData();
+                    if ($nodeData === null)
+                        continue;
+                }
+
+                if (!$sourceContext->isInvisibleContentShown()) {
+                    // filter out node if any of the parents is hidden
+                    $parent = $nodeData;
+                    while ($parent !== null) {
+                        if ($parent->isHidden()) {
+                            return false;
+                        }
+                        $parentNode = $sourceContext->getNode($parent->getParentPath());
+                        if (!$parentNode instanceof NodeInterface
+                            || $parentNode->getNodeData()->getDimensionValues() === []) {
+                            break;
+                        }
+                        $parent = $parentNode->getNodeData();
+                    }
+                }
+            }
+
+            return $nodeData !== null;
+        });
 
         // Sort nodeDataList by path, replacing "/" with "!" (the first visible ASCII character)
         // because there may be characters like "-" in the node path
@@ -354,17 +407,19 @@ class ExportService
     }
 
     /**
-     * Writes out a single property into the XML structure.
+     * Writes out a single string property into the XML structure.
      *
      * @param string $propertyName The name of the property
-     * @param mixed $propertyValue The value of the property
+     * @param string $propertyValue The value of the property
      */
     protected function writeProperty($propertyName, $propertyValue)
     {
         $this->xmlWriter->startElement($propertyName);
-        $this->xmlWriter->writeAttribute('type', gettype($propertyValue));
+        $this->xmlWriter->writeAttribute('type', 'string');
         if ($propertyValue !== '' && $propertyValue !== null) {
+            $this->xmlWriter->startCData();
             $this->xmlWriter->text($propertyValue);
+            $this->xmlWriter->endCData();
         }
         $this->xmlWriter->endElement();
     }

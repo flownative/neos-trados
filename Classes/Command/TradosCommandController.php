@@ -45,9 +45,10 @@ class TradosCommandController extends CommandController
      * @param string $targetLanguage The target language for the translation, optional.
      * @param string $filename Path and filename to the XML file to create.
      * @param string $modifiedAfter
+     * @param boolean $ignoreHidden
      * @return void
      */
-    public function exportCommand($startingPoint, $sourceLanguage, $targetLanguage = null, $filename = null, $modifiedAfter = null)
+    public function exportCommand($startingPoint, $sourceLanguage, $targetLanguage = null, $filename = null, $modifiedAfter = null, $ignoreHidden = true)
     {
         if ($modifiedAfter !== null) {
             $modifiedAfter = new \DateTime($modifiedAfter);
@@ -55,9 +56,9 @@ class TradosCommandController extends CommandController
 
         try {
             if ($filename === null) {
-                    $this->output($this->exportService->exportToString($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter));
+                    $this->output($this->exportService->exportToString($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden));
             } else {
-                $this->exportService->exportToFile($filename, $startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter);
+                $this->exportService->exportToFile($filename, $startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden);
                 $this->outputLine('<success>The tree starting at "/sites/%s" has been exported to "%s".</success>', array($startingPoint, $filename));
             }
         } catch (\Exception $exception) {
