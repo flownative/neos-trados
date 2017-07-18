@@ -201,7 +201,7 @@ class ImportService
                 'workspaceName' => $sourceWorkspaceName,
                 'dimensions' => [],
                 'targetDimensions' => [],
-                'invisibleContentShown' => false,
+                'invisibleContentShown' => true,
                 'removedContentShown' => false,
                 'inaccessibleContentShown' => false
             ]);
@@ -409,7 +409,8 @@ class ImportService
         $targetContentContext = $this->contentContextFactory->create([
             'workspaceName' => $this->targetWorkspace->getName(),
             'dimensions' => $dimensions,
-            'targetDimensions' => $targetDimensions
+            'targetDimensions' => $targetDimensions,
+            'invisibleContentShown' => true,
         ]);
 
         if ($currentNodeVariant === null) {
