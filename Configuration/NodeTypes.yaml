@@ -2,7 +2,7 @@
 # Adjustments to some widespread types
 #
 
-'TYPO3.Neos:Document':
+'Neos.Neos:Document':
   options:
     Flownative:
       Neos:

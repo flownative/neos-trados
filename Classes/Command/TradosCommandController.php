@@ -11,8 +11,8 @@ namespace Flownative\Neos\Trados\Command;
  * source code.
  */
 
-use TYPO3\Flow\Annotations as Flow;
-use TYPO3\Flow\Cli\CommandController;
+use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Cli\CommandController;
 use Flownative\Neos\Trados\Service\ExportService;
 use Flownative\Neos\Trados\Service\ImportService;
 

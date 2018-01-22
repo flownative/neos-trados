@@ -11,11 +11,11 @@ namespace Flownative\Neos\Trados\Service;
  * source code.
  */
 
-use TYPO3\Flow\Annotations as Flow;
-use TYPO3\Flow\Package\Exception\InvalidPackageStateException;
-use TYPO3\Flow\Package\Exception\UnknownPackageException;
-use TYPO3\Neos\Domain\Service\ContentContext;
-use TYPO3\TYPO3CR\Domain\Model\Workspace;
+use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Package\Exception\InvalidPackageStateException;
+use Neos\Flow\Package\Exception\UnknownPackageException;
+use Neos\Neos\Domain\Service\ContentContext;
+use Neos\ContentRepository\Domain\Model\Workspace;
 
 /**
  * The Trados Import Service
@@ -37,43 +37,43 @@ class ImportService
 
     /**
      * @Flow\Inject
-     * @var \TYPO3\Flow\Package\PackageManagerInterface
+     * @var \Neos\Flow\Package\PackageManagerInterface
      */
     protected $packageManager;
 
     /**
      * @Flow\Inject
-     * @var \TYPO3\Flow\Persistence\PersistenceManagerInterface
+     * @var \Neos\Flow\Persistence\PersistenceManagerInterface
      */
     protected $persistenceManager;
 
     /**
      * @Flow\Inject
-     * @var \TYPO3\Neos\Domain\Repository\SiteRepository
+     * @var \Neos\Neos\Domain\Repository\SiteRepository
      */
     protected $siteRepository;
 
     /**
      * @Flow\Inject
-     * @var \TYPO3\TYPO3CR\Domain\Repository\WorkspaceRepository
+     * @var \Neos\ContentRepository\Domain\Repository\WorkspaceRepository
      */
     protected $workspaceRepository;
 
     /**
      * @Flow\Inject
-     * @var \TYPO3\Neos\Domain\Service\ContentContextFactory
+     * @var \Neos\Neos\Domain\Service\ContentContextFactory
      */
     protected $contentContextFactory;
 
     /**
      * @Flow\Inject
-     * @var \TYPO3\Flow\Security\Context
+     * @var \Neos\Flow\Security\Context
      */
     protected $securityContext;
 
     /**
      * @Flow\Inject
-     * @var \TYPO3\Neos\Domain\Service\ContentDimensionPresetSourceInterface
+     * @var \Neos\Neos\Domain\Service\ContentDimensionPresetSourceInterface
      */
     protected $contentDimensionPresetSource;
 
@@ -144,7 +144,7 @@ class ImportService
      */
     public function importFromFile($pathAndFilename, $workspaceName = null, $targetLanguage = null)
     {
-        /** @var \TYPO3\Neos\Domain\Model\Site $importedSite */
+        /** @var \Neos\Neos\Domain\Model\Site $importedSite */
         $site = null;
         $xmlReader = new \XMLReader();
         $xmlReader->open($pathAndFilename, null, LIBXML_PARSEHUGE);
@@ -381,8 +381,8 @@ class ImportService
             return;
         }
 
-        /** @var \TYPO3\TYPO3CR\Domain\Model\NodeInterface $currentNodeVariant */
-        $currentNodeVariant = array_reduce($this->currentNodeVariants, function ($carry, \TYPO3\TYPO3CR\Domain\Model\NodeInterface $nodeVariant) use ($translatedData) {
+        /** @var \Neos\ContentRepository\Domain\Model\NodeInterface $currentNodeVariant */
+        $currentNodeVariant = array_reduce($this->currentNodeVariants, function ($carry, \Neos\ContentRepository\Domain\Model\NodeInterface $nodeVariant) use ($translatedData) {
             // best match
             $dimensionsToMatch = array_merge($translatedData['dimensionValues'], [$this->languageDimension => [$this->targetLanguage]]);
             if ($nodeVariant->getDimensions() === $dimensionsToMatch) {
