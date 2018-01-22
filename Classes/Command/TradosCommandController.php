@@ -11,10 +11,10 @@ namespace Flownative\Neos\Trados\Command;
  * source code.
  */
 
-use Neos\Flow\Annotations as Flow;
-use Neos\Flow\Cli\CommandController;
 use Flownative\Neos\Trados\Service\ExportService;
 use Flownative\Neos\Trados\Service\ImportService;
+use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Cli\CommandController;
 
 /**
  * The Export Command Controller
@@ -56,15 +56,15 @@ class TradosCommandController extends CommandController
 
         try {
             if ($filename === null) {
-                    $this->output($this->exportService->exportToString($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden));
+                $this->output($this->exportService->exportToString($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden));
             } else {
                 $this->exportService->exportToFile($filename, $startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden);
-                $this->outputLine('<success>The tree starting at "/sites/%s" has been exported to "%s".</success>', array($startingPoint, $filename));
+                $this->outputLine('<success>The tree starting at "/sites/%s" has been exported to "%s".</success>', [$startingPoint, $filename]);
             }
         } catch (\Exception $exception) {
-            $this->outputLine('<error>%s</error>', array($exception->getMessage()));
+            $this->outputLine('<error>%s</error>', [$exception->getMessage()]);
         }
-        $this->outputLine('Peak memory used: %u', array(memory_get_peak_usage()));
+        $this->outputLine('Peak memory used: %u', [memory_get_peak_usage()]);
     }
 
     /**
@@ -80,10 +80,10 @@ class TradosCommandController extends CommandController
     {
         try {
             $importedLanguage = $this->importService->importFromFile($filename, $workspace, $targetLanguage);
-            $this->outputLine('<success>The file "%s" has been imported to language "%s" in workspace "%s".</success>', array($filename, $importedLanguage, $workspace));
+            $this->outputLine('<success>The file "%s" has been imported to language "%s" in workspace "%s".</success>', [$filename, $importedLanguage, $workspace]);
         } catch (\Exception $exception) {
-            $this->outputLine('<error>%s</error>', array($exception->getMessage()));
+            $this->outputLine('<error>%s</error>', [$exception->getMessage()]);
         }
-        $this->outputLine('Peak memory used: %u', array(memory_get_peak_usage()));
+        $this->outputLine('Peak memory used: %u', [memory_get_peak_usage()]);
     }
 }

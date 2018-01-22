@@ -11,13 +11,13 @@ namespace Flownative\Neos\Trados\Service;
  * source code.
  */
 
-use Neos\Flow\Annotations as Flow;
-use Neos\Neos\Domain\Model\Site;
-use Neos\Neos\Domain\Service\ContentContext;
 use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Service\ContextFactoryInterface;
 use Neos\ContentRepository\Domain\Utility\NodePaths;
+use Neos\Flow\Annotations as Flow;
+use Neos\Neos\Domain\Model\Site;
+use Neos\Neos\Domain\Service\ContentContext;
 
 /**
  * The Trados Export Service
@@ -237,7 +237,7 @@ class ExportService
         }
 
         $uniqueNodeDataList = [];
-        usort($nodeDataList, function(NodeData $node1, NodeData $node2) use ($sourceLanguage) {
+        usort($nodeDataList, function (NodeData $node1, NodeData $node2) use ($sourceLanguage) {
             if ($node1->getDimensionValues()[$this->languageDimension][0] === $sourceLanguage) {
                 return 1;
             }
@@ -259,8 +259,9 @@ class ExportService
                 if ($nodeData->getDimensionValues()[$this->languageDimension][0] !== $sourceLanguage) {
                     // "reload" nodedata in correct dimension
                     $nodeData = $sourceContext->getNodeByIdentifier($nodeData->getIdentifier())->getNodeData();
-                    if ($nodeData === null)
+                    if ($nodeData === null) {
                         continue;
+                    }
                 }
 
                 if (!$sourceContext->isInvisibleContentShown()) {

@@ -11,11 +11,11 @@ namespace Flownative\Neos\Trados\Service;
  * source code.
  */
 
+use Neos\ContentRepository\Domain\Model\Workspace;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Package\Exception\InvalidPackageStateException;
 use Neos\Flow\Package\Exception\UnknownPackageException;
 use Neos\Neos\Domain\Service\ContentContext;
-use Neos\ContentRepository\Domain\Model\Workspace;
 
 /**
  * The Trados Import Service
