@@ -5,6 +5,10 @@
 * Export content into an XML format Trados can digest and that carries only needed data
 * Import translations into a specific language
 
+## Installation
+
+`composer require flownative/neos-trados`
+
 ## Usage
 
 The export command:
