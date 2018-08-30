@@ -75,3 +75,11 @@ certain properties, you can configure that in your `NodeTypes.yaml` file like th
               properties:
                 twitterCardType:
                   skip: true
+
+### Trados setup
+
+To configure Trados in a way that only shows the content that should be translated,
+you need to create a custom XML file type as filter. It needs to specify the tags
+that sould be filtered. This explains it: https://www.youtube.com/watch?v=TrxLLP5OaIc
+
+_Thanks to Robin Clemens for the hint!_
