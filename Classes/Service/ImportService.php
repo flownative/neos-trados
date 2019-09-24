@@ -168,9 +168,6 @@ class ImportService
             if (!$this->packageManager->isPackageAvailable($sitePackageKey)) {
                 throw new UnknownPackageException(sprintf('Package "%s" specified in the XML as site package does not exist.', $sitePackageKey), 1474357509);
             }
-            if (!$this->packageManager->isPackageActive($sitePackageKey)) {
-                throw new InvalidPackageStateException(sprintf('Package "%s" specified in the XML as site package is not active.', $sitePackageKey), 1474357512);
-            }
             if ($this->siteRepository->findOneBySiteResourcesPackageKey($sitePackageKey) === null) {
                 throw new InvalidPackageStateException(sprintf('Site for package "%s" specified in the XML as site package could not be found.', $sitePackageKey), 1474357541);
             }
