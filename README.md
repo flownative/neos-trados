@@ -76,6 +76,15 @@ certain properties, you can configure that in your `NodeTypes.yaml` file like th
                 twitterCardType:
                   skip: true
 
+In order to configure which dimension should be translated, this can be configured using `Settings.yaml`:
+
+```yaml
+Flownative:
+  Neos:
+    Trados:
+      languageDimension: 'language_country'
+```
+
 ### Trados setup
 
 To configure Trados in a way that only shows the content that should be translated,
