@@ -162,7 +162,11 @@ class ImportService
                 throw new \RuntimeException('No target language given (neither in XML nor as argument)', 1475578770);
             }
 
-            $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetByUriSegment($this->languageDimension, $this->targetLanguage);
+            $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetByDimensionValues($this->languageDimension, [$this->targetLanguage]);
+
+            if ($this->languageDimensionPreset === null) {
+                throw new \RuntimeException(sprintf('No language dimension preset found for language "%s".', $this->targetLanguage), 1571230670);
+            }
 
             $sitePackageKey = $xmlReader->getAttribute('sitePackageKey');
             if (!$this->packageManager->isPackageAvailable($sitePackageKey)) {
