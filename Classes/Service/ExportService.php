@@ -158,7 +158,8 @@ class ExportService
             'currentSite' => $site,
             'invisibleContentShown' => !$ignoreHidden,
             'removedContentShown' => false,
-            'inaccessibleContentShown' => !$ignoreHidden
+            'inaccessibleContentShown' => !$ignoreHidden,
+            'dimensions' => current($this->getAllowedContentCombinationsForSourceLanguage($sourceLanguage))
         ]);
 
         $this->xmlWriter->startDocument('1.0', 'UTF-8');
@@ -213,11 +214,7 @@ class ExportService
      */
     protected function findNodeDataListToExport($pathStartingPoint, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
     {
-        $allAllowedContentCombinations = $this->contentDimensionCombinator->getAllAllowedCombinations();
-
-        $allowedContentCombinations = array_filter($allAllowedContentCombinations, function ($combination) use ($sourceLanguage) {
-            return (isset($combination[$this->languageDimension]) && $combination[$this->languageDimension][0] === $sourceLanguage);
-        });
+        $allowedContentCombinations = $this->getAllowedContentCombinationsForSourceLanguage($sourceLanguage);
         $sourceContexts = [];
 
         /** @var NodeData[] $nodeDataList */
@@ -258,10 +255,11 @@ class ExportService
                 }
                 if ($nodeData->getDimensionValues()[$this->languageDimension][0] !== $sourceLanguage) {
                     // "reload" nodedata in correct dimension
-                    $nodeData = $sourceContext->getNodeByIdentifier($nodeData->getIdentifier())->getNodeData();
-                    if ($nodeData === null) {
+                    $node = $sourceContext->getNodeByIdentifier($nodeData->getIdentifier());
+                    if ($node === null || $node->getNodeData() === null) {
                         continue;
                     }
+                    $nodeData = $node->getNodeData();
                 }
 
                 if (!$sourceContext->isInvisibleContentShown()) {
@@ -423,5 +421,14 @@ class ExportService
             $this->xmlWriter->endCData();
         }
         $this->xmlWriter->endElement();
+    }
+
+    protected function getAllowedContentCombinationsForSourceLanguage(string $sourceLanguage): array
+    {
+        $allAllowedContentCombinations = $this->contentDimensionCombinator->getAllAllowedCombinations();
+
+        return array_filter($allAllowedContentCombinations, function ($combination) use ($sourceLanguage) {
+            return (isset($combination[$this->languageDimension]) && $combination[$this->languageDimension][0] === $sourceLanguage);
+        });
     }
 }
