@@ -51,15 +51,6 @@ class ExportService
     protected $contextFactory;
 
     /**
-     * Doctrine's Entity Manager. Note that "ObjectManager" is the name of the related
-     * interface ...
-     *
-     * @Flow\Inject
-     * @var \Doctrine\Common\Persistence\ObjectManager
-     */
-    protected $entityManager;
-
-    /**
      * @Flow\Inject
      * @var \Neos\ContentRepository\Domain\Service\NodeTypeManager
      */
