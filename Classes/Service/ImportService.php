@@ -162,7 +162,7 @@ class ImportService
                 throw new \RuntimeException('No target language given (neither in XML nor as argument)', 1475578770);
             }
 
-            $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetByDimensionValues($this->languageDimension, [$this->targetLanguage]);
+            $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetsByTargetValues([$this->languageDimension => [$this->targetLanguage]]);
 
             if ($this->languageDimensionPreset === null) {
                 throw new \RuntimeException(sprintf('No language dimension preset found for language "%s".', $this->targetLanguage), 1571230670);
@@ -398,7 +398,7 @@ class ImportService
             return $carry;
         });
 
-        $dimensions = array_merge($translatedData['dimensionValues'], [$this->languageDimension => $this->languageDimensionPreset['values']]);
+        $dimensions = array_merge($translatedData['dimensionValues'], [$this->languageDimension => $this->languageDimensionPreset[$this->languageDimension]['values']]);
         $targetDimensions = array_map(
             function ($values) {
                 return current($values);
