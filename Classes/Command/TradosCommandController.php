@@ -40,7 +40,7 @@ class TradosCommandController extends CommandController
      *
      * This command exports a specific site including all content into an XML format.
      *
-     * @param string $startingPoint The node with which to start the export, relative to the site node. Optional.
+     * @param string $startingPoint The node with which to start the export, relative to the site node.
      * @param string $sourceLanguage The language to use as base for the export.
      * @param string $targetLanguage The target language for the translation, optional.
      * @param string $filename Path and filename to the XML file to create.
