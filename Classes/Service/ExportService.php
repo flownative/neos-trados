@@ -85,12 +85,12 @@ class ExportService
      *
      * @param string $startingPoint
      * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
+     * @param string|null $targetLanguage
+     * @param \DateTime|null $modifiedAfter
      * @param boolean $ignoreHidden
      * @return string
      */
-    public function exportToString($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
+    public function exportToString(string $startingPoint, string $sourceLanguage, string $targetLanguage = null, \DateTime $modifiedAfter = null, bool $ignoreHidden = true): string
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openMemory();
@@ -107,12 +107,12 @@ class ExportService
      * @param string $pathAndFilename Path to where the export output should be saved to
      * @param string $startingPoint
      * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
+     * @param string|null $targetLanguage
+     * @param \DateTime|null $modifiedAfter
      * @param boolean $ignoreHidden
      * @return void
      */
-    public function exportToFile($pathAndFilename, $startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
+    public function exportToFile(string $pathAndFilename, string $startingPoint, string $sourceLanguage, string $targetLanguage = null, \DateTime $modifiedAfter = null, bool $ignoreHidden = true)
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openUri($pathAndFilename);
@@ -128,13 +128,13 @@ class ExportService
      *
      * @param string $startingPoint
      * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
+     * @param string|null $targetLanguage
+     * @param \DateTime|null $modifiedAfter
      * @param string $workspaceName
      * @param boolean $ignoreHidden
      * @return void
      */
-    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $workspaceName = 'live', $ignoreHidden = true)
+    protected function export(string $startingPoint, string $sourceLanguage, string $targetLanguage = null, \DateTime $modifiedAfter = null, string $workspaceName = 'live', bool $ignoreHidden = true)
     {
         $siteNodeName = current(explode('/', $startingPoint));
         /** @var Site $site */
@@ -180,11 +180,11 @@ class ExportService
      * @param string $startingPointNodePath path to the root node of the sub-tree to export. The specified node will not be included, only its sub nodes.
      * @param ContentContext $contentContext
      * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
+     * @param string|null $targetLanguage
+     * @param \DateTime|null $modifiedAfter
      * @return void
      */
-    public function exportNodes($startingPointNodePath, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    public function exportNodes(string $startingPointNodePath, ContentContext $contentContext, string $sourceLanguage, string $targetLanguage = null, \DateTime $modifiedAfter = null)
     {
         $this->securityContext->withoutAuthorizationChecks(function () use ($startingPointNodePath, $contentContext, $sourceLanguage, $targetLanguage, $modifiedAfter) {
             $nodeDataList = $this->findNodeDataListToExport($startingPointNodePath, $contentContext, $sourceLanguage, $targetLanguage, $modifiedAfter);
@@ -199,11 +199,11 @@ class ExportService
      * @param string $pathStartingPoint Absolute path specifying the starting point
      * @param ContentContext $contentContext
      * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
+     * @param string|null $targetLanguage
+     * @param \DateTime|null $modifiedAfter
      * @return array<NodeData>
      */
-    protected function findNodeDataListToExport($pathStartingPoint, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    protected function findNodeDataListToExport(string $pathStartingPoint, ContentContext $contentContext, string $sourceLanguage, string $targetLanguage = null, \DateTime $modifiedAfter = null): array
     {
         $allowedContentCombinations = $this->getAllowedContentCombinationsForSourceLanguage($sourceLanguage);
         $sourceContexts = [];
@@ -311,10 +311,10 @@ class ExportService
      * Write a single node into the XML structure
      *
      * @param NodeData $nodeData The node data
-     * @param string $currentNodeDataIdentifier The "current" node, as passed by exportNodeDataList()
+     * @param string|null $currentNodeDataIdentifier The "current" node, as passed by exportNodeDataList()
      * @return void The result is written directly into $this->xmlWriter
      */
-    protected function writeNode(NodeData $nodeData, &$currentNodeDataIdentifier)
+    protected function writeNode(NodeData $nodeData, string &$currentNodeDataIdentifier = null)
     {
         $nodeName = $nodeData->getName();
 
@@ -402,7 +402,7 @@ class ExportService
      * @param string $propertyName The name of the property
      * @param string $propertyValue The value of the property
      */
-    protected function writeProperty($propertyName, $propertyValue)
+    protected function writeProperty(string $propertyName, string $propertyValue)
     {
         $this->xmlWriter->startElement($propertyName);
         $this->xmlWriter->writeAttribute('type', 'string');

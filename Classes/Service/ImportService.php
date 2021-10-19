@@ -136,13 +136,13 @@ class ImportService
      *
      *
      * @param string $pathAndFilename
-     * @param string $workspaceName
-     * @param string $targetLanguage
+     * @param string|null $workspaceName
+     * @param string|null $targetLanguage
      * @return string
      * @throws InvalidPackageStateException
      * @throws UnknownPackageException
      */
-    public function importFromFile($pathAndFilename, $workspaceName = null, $targetLanguage = null)
+    public function importFromFile(string $pathAndFilename, string $workspaceName = null, string $targetLanguage = null): string
     {
         /** @var \Neos\Neos\Domain\Model\Site $importedSite */
         $site = null;
@@ -307,7 +307,7 @@ class ImportService
      * @param \XMLReader $reader reader positioned just after an opening dimensions-tag
      * @return array the dimension values
      */
-    protected function parseDimensionsElement(\XMLReader $reader)
+    protected function parseDimensionsElement(\XMLReader $reader): array
     {
         $dimensions = [];
         $currentDimension = null;
@@ -340,7 +340,7 @@ class ImportService
      * @return array the properties
      * @throws \Exception
      */
-    protected function parsePropertiesElement(\XMLReader $reader)
+    protected function parsePropertiesElement(\XMLReader $reader): array
     {
         $properties = [];
         $currentProperty = null;
