@@ -22,19 +22,8 @@ use Neos\Neos\Domain\Service\ContentContext;
  *
  * @Flow\Scope("singleton")
  */
-class ImportService
+class ImportService extends AbstractService
 {
-    /**
-     * @var string
-     */
-    const SUPPORTED_FORMAT_VERSION = '1.0';
-
-    /**
-     * @Flow\InjectConfiguration(path = "languageDimension")
-     * @var string
-     */
-    protected $languageDimension;
-
     /**
      * @Flow\Inject
      * @var \Neos\Flow\Package\PackageManager
@@ -46,30 +35,6 @@ class ImportService
      * @var \Neos\Flow\Persistence\PersistenceManagerInterface
      */
     protected $persistenceManager;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\Neos\Domain\Repository\SiteRepository
-     */
-    protected $siteRepository;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\ContentRepository\Domain\Repository\WorkspaceRepository
-     */
-    protected $workspaceRepository;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\Neos\Domain\Service\ContentContextFactory
-     */
-    protected $contentContextFactory;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\Flow\Security\Context
-     */
-    protected $securityContext;
 
     /**
      * @Flow\Inject
@@ -106,11 +71,6 @@ class ImportService
      * @var Workspace
      */
     protected $targetWorkspace;
-
-    /**
-     * @var string
-     */
-    protected $sourceWorkspaceName;
 
     /**
      * @var string
@@ -274,7 +234,6 @@ class ImportService
             break;
             default:
                 throw new \Exception(sprintf('Unexpected element <%s> ', $elementName), 1423578065);
-            break;
         }
     }
 
@@ -296,7 +255,6 @@ class ImportService
             break;
             default:
                 throw new \Exception(sprintf('Unexpected end element <%s> ', $reader->name), 1423578066);
-            break;
         }
     }
 
