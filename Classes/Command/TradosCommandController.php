@@ -4,7 +4,7 @@ namespace Flownative\Neos\Trados\Command;
 /*
  * This file is part of the Flownative.Neos.Trados package.
  *
- * (c) Contributors of the Neos Project - www.neos.io
+ * (c) Flownative GmbH - https://www.flownative.com/
  *
  * This package is Open Source Software. For the full copyright and license
  * information, please view the LICENSE file which was distributed with this
