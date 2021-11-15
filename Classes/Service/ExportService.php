@@ -364,7 +364,7 @@ class ExportService extends AbstractService
      * @return void The result is written directly into $this->xmlWriter
      * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
      */
-    protected function writeNode(NodeData $nodeData, string &$currentNodeDataIdentifier = null)
+    protected function writeNode(NodeData $nodeData, ?string &$currentNodeDataIdentifier)
     {
         $nodeName = $nodeData->getName();
 
