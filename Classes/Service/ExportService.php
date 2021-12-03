@@ -14,7 +14,6 @@ namespace Flownative\Neos\Trados\Service;
 use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Service\ContextFactoryInterface;
-use Neos\ContentRepository\Domain\Utility\NodePaths;
 use Neos\Flow\Annotations as Flow;
 use Neos\Neos\Domain\Model\Site;
 use Neos\Neos\Domain\Service\ContentContext;
@@ -49,15 +48,6 @@ class ExportService
      * @var ContextFactoryInterface
      */
     protected $contextFactory;
-
-    /**
-     * Doctrine's Entity Manager. Note that "ObjectManager" is the name of the related
-     * interface ...
-     *
-     * @Flow\Inject
-     * @var \Doctrine\Common\Persistence\ObjectManager
-     */
-    protected $entityManager;
 
     /**
      * @Flow\Inject
