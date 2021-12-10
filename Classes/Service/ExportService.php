@@ -14,8 +14,6 @@ namespace Flownative\Neos\Trados\Service;
 use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
-use Neos\ContentRepository\Domain\Service\ContextFactoryInterface;
-use Neos\ContentRepository\Domain\Utility\NodePaths;
 use Neos\Flow\Annotations as Flow;
 use Neos\Neos\Domain\Model\Site;
 use Neos\Neos\Domain\Service\ContentContext;
@@ -119,14 +117,15 @@ class ExportService extends AbstractService
      * @param string $documentTypeFilter
      * @param int $depth
      */
-    public function initialize(string $startingPoint,
-                               string $sourceLanguage,
-                               string $targetLanguage = null,
-                               \DateTime $modifiedAfter = null,
-                               bool $ignoreHidden = true,
-                               string $documentTypeFilter = 'Neos.Neos:Document',
-                               int $depth = 0)
-    {
+    public function initialize(
+        string $startingPoint,
+        string $sourceLanguage,
+        string $targetLanguage = null,
+        \DateTime $modifiedAfter = null,
+        bool $ignoreHidden = true,
+        string $documentTypeFilter = 'Neos.Neos:Document',
+        int $depth = 0
+    ) {
         $this->startingPoint = $startingPoint;
         $this->sourceLanguage = $sourceLanguage;
         $this->targetLanguage = $targetLanguage;
@@ -146,7 +145,7 @@ class ExportService extends AbstractService
         $this->contentContext = $contentContext;
 
         $startingPointNode = $this->contentContext->getNodeByIdentifier($startingPoint);
-        if($startingPointNode === null){
+        if ($startingPointNode === null) {
             $startingPointNode = $this->contentContext->getNode('/sites/' . $this->startingPoint);
             if ($startingPointNode === null) {
                 throw new \RuntimeException(sprintf('Could not find node "%s"', $this->startingPoint), 1473241812);
@@ -157,10 +156,9 @@ class ExportService extends AbstractService
         $pathArray = explode('/', $this->startingPointNode->findNodePath());
         $this->site = $this->siteRepository->findOneByNodeName($pathArray[2]);
 
-        if($this->workspaceRepository->findOneByName($this->workspaceName) === null){
+        if ($this->workspaceRepository->findOneByName($this->workspaceName) === null) {
             throw new \RuntimeException(sprintf('Could not find workspace "%s"', $this->workspaceName), 14732418113);
         }
-
     }
 
     /**
