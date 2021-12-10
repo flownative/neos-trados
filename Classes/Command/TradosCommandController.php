@@ -50,12 +50,7 @@ class TradosCommandController extends CommandController
      * @return void
      * @throws \Exception
      */
-    public function exportCommand(string $startingPoint,
-                                  string $sourceLanguage,
-                                  string $targetLanguage = null,
-                                  string $filename = null,
-                                  string $modifiedAfter = null,
-                                  bool $ignoreHidden = true)
+    public function exportCommand(string $startingPoint, string $sourceLanguage, string $targetLanguage = null, string $filename = null, string $modifiedAfter = null, bool $ignoreHidden = true)
     {
         if ($modifiedAfter !== null) {
             $modifiedAfter = new \DateTime($modifiedAfter);
