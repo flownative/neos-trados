@@ -13,8 +13,7 @@ namespace Flownative\Neos\Trados\Service;
 
 use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
-use Neos\ContentRepository\Domain\Service\ContextFactoryInterface;
-use Neos\ContentRepository\Domain\Utility\NodePaths;
+use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\Flow\Annotations as Flow;
 use Neos\Neos\Domain\Model\Site;
 use Neos\Neos\Domain\Service\ContentContext;
@@ -24,18 +23,19 @@ use Neos\Neos\Domain\Service\ContentContext;
  *
  * @Flow\Scope("singleton")
  */
-class ExportService
+class ExportService extends AbstractService
 {
     /**
+     * @Flow\InjectConfiguration(path = "export.workspace")
      * @var string
      */
-    const SUPPORTED_FORMAT_VERSION = '1.0';
+    protected string $workspaceName;
 
     /**
-     * @Flow\InjectConfiguration(path = "languageDimension")
+     * @Flow\InjectConfiguration(path = "export.documentTypeFilter")
      * @var string
      */
-    protected $languageDimension;
+    protected string $documentTypeFilter;
 
     /**
      * The XMLWriter that is used to construct the export.
@@ -46,42 +46,15 @@ class ExportService
 
     /**
      * @Flow\Inject
-     * @var ContextFactoryInterface
-     */
-    protected $contextFactory;
-
-    /**
-     * Doctrine's Entity Manager. Note that "ObjectManager" is the name of the related
-     * interface ...
-     *
-     * @Flow\Inject
-     * @var \Doctrine\Common\Persistence\ObjectManager
-     */
-    protected $entityManager;
-
-    /**
-     * @Flow\Inject
      * @var \Neos\ContentRepository\Domain\Service\NodeTypeManager
      */
     protected $nodeTypeManager;
 
     /**
      * @Flow\Inject
-     * @var \Neos\Neos\Domain\Repository\SiteRepository
-     */
-    protected $siteRepository;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\ContentRepository\Domain\Repository\NodeDataRepository
+     * @var NodeDataRepository
      */
     protected $nodeDataRepository;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\Flow\Security\Context
-     */
-    protected $securityContext;
 
     /**
      * @Flow\Inject
@@ -90,22 +63,117 @@ class ExportService
     protected $contentDimensionCombinator;
 
     /**
-     * Fetches the site with the given name and exports it into XML.
+     * @var ContentContext
      *
+     */
+    protected ContentContext $contentContext;
+
+    /**
+     * @var string
+     */
+    protected string $startingPoint;
+
+    /**
+     * @var NodeInterface
+     */
+    protected NodeInterface $startingPointNode;
+
+    /**
+     * @var Site
+     */
+    protected Site $site;
+
+    /**
+     * @var string
+     */
+    protected string $sourceLanguage;
+
+    /**
+     * @var string|null
+     */
+    protected ?string $targetLanguage;
+
+    /**
+     * @var \DateTime|null
+     */
+    protected ?\DateTime $modifiedAfter;
+
+    /**
+     * @var bool
+     */
+    protected bool $ignoreHidden;
+
+    /**
+     * @var int
+     */
+    protected int $depth;
+
+    /**
      * @param string $startingPoint
      * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
-     * @param boolean $ignoreHidden
-     * @return string
+     * @param string|null $targetLanguage
+     * @param \DateTime|null $modifiedAfter
+     * @param bool $ignoreHidden
+     * @param string $documentTypeFilter
+     * @param int $depth
      */
-    public function exportToString($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
+    public function initialize(
+        string $startingPoint,
+        string $sourceLanguage,
+        string $targetLanguage = null,
+        \DateTime $modifiedAfter = null,
+        bool $ignoreHidden = true,
+        string $documentTypeFilter = 'Neos.Neos:Document',
+        int $depth = 0
+    ) {
+        $this->startingPoint = $startingPoint;
+        $this->sourceLanguage = $sourceLanguage;
+        $this->targetLanguage = $targetLanguage;
+        $this->modifiedAfter = $modifiedAfter;
+        $this->ignoreHidden = $ignoreHidden;
+        $this->documentTypeFilter = $documentTypeFilter;
+        $this->depth = $depth;
+
+        /** @var ContentContext $contentContext */
+        $contentContext = $this->contentContextFactory->create([
+            'workspaceName' => $this->workspaceName,
+            'invisibleContentShown' => !$this->ignoreHidden,
+            'removedContentShown' => false,
+            'inaccessibleContentShown' => !$this->ignoreHidden,
+            'dimensions' => current($this->getAllowedContentCombinationsForSourceLanguage($this->sourceLanguage))
+        ]);
+        $this->contentContext = $contentContext;
+
+        $startingPointNode = $this->contentContext->getNodeByIdentifier($startingPoint);
+        if ($startingPointNode === null) {
+            $startingPointNode = $this->contentContext->getNode('/sites/' . $this->startingPoint);
+            if ($startingPointNode === null) {
+                throw new \RuntimeException(sprintf('Could not find node "%s"', $this->startingPoint), 1473241812);
+            }
+        }
+
+        $this->startingPointNode = $startingPointNode;
+        $pathArray = explode('/', $this->startingPointNode->findNodePath());
+        $this->site = $this->siteRepository->findOneByNodeName($pathArray[2]);
+
+        if ($this->workspaceRepository->findOneByName($this->workspaceName) === null) {
+            throw new \RuntimeException(sprintf('Could not find workspace "%s"', $this->workspaceName), 14732418113);
+        }
+    }
+
+    /**
+     * Fetches the site with the given name and exports it into XML.
+     *
+     * @return string
+     * @throws \Exception
+     */
+    public function exportToString(): string
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openMemory();
         $this->xmlWriter->setIndent(true);
 
-        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, 'live', $ignoreHidden);
+        $this->exportToXmlWriter();
 
         return $this->xmlWriter->outputMemory(true);
     }
@@ -114,20 +182,16 @@ class ExportService
      * Export into the given file.
      *
      * @param string $pathAndFilename Path to where the export output should be saved to
-     * @param string $startingPoint
-     * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
-     * @param boolean $ignoreHidden
      * @return void
+     * @throws \Exception
      */
-    public function exportToFile($pathAndFilename, $startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $ignoreHidden = true)
+    public function exportToFile(string $pathAndFilename)
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openUri($pathAndFilename);
         $this->xmlWriter->setIndent(true);
 
-        $this->export($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, 'live', $ignoreHidden);
+        $this->exportToXmlWriter();
 
         $this->xmlWriter->flush();
     }
@@ -135,48 +199,28 @@ class ExportService
     /**
      * Export to the XMLWriter.
      *
-     * @param string $startingPoint
-     * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
-     * @param string $workspaceName
-     * @param boolean $ignoreHidden
      * @return void
+     * @throws \Exception
      */
-    protected function export($startingPoint, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null, $workspaceName = 'live', $ignoreHidden = true)
+    protected function exportToXmlWriter()
     {
-        $siteNodeName = current(explode('/', $startingPoint));
-        /** @var Site $site */
-        $site = $this->siteRepository->findOneByNodeName($siteNodeName);
-        if ($site === null) {
-            throw new \RuntimeException(sprintf('No site found for node name "%s"', $siteNodeName), 1473241812);
-        }
-
-        /** @var ContentContext $contentContext */
-        $contentContext = $this->contextFactory->create([
-            'workspaceName' => $workspaceName,
-            'currentSite' => $site,
-            'invisibleContentShown' => !$ignoreHidden,
-            'removedContentShown' => false,
-            'inaccessibleContentShown' => !$ignoreHidden,
-            'dimensions' => current($this->getAllowedContentCombinationsForSourceLanguage($sourceLanguage))
-        ]);
-
         $this->xmlWriter->startDocument('1.0', 'UTF-8');
         $this->xmlWriter->startElement('content');
 
-        $this->xmlWriter->writeAttribute('name', $site->getName());
-        $this->xmlWriter->writeAttribute('sitePackageKey', $site->getSiteResourcesPackageKey());
-        $this->xmlWriter->writeAttribute('workspace', $workspaceName);
-        $this->xmlWriter->writeAttribute('sourceLanguage', $sourceLanguage);
-        if ($targetLanguage !== null) {
-            $this->xmlWriter->writeAttribute('targetLanguage', $targetLanguage);
+        $this->xmlWriter->writeAttribute('name', $this->site->getName());
+        $this->xmlWriter->writeAttribute('sitePackageKey', $this->site->getSiteResourcesPackageKey());
+        $this->xmlWriter->writeAttribute('workspace', $this->workspaceName);
+        $this->xmlWriter->writeAttribute('sourceLanguage', $this->sourceLanguage);
+        if ($this->targetLanguage !== null) {
+            $this->xmlWriter->writeAttribute('targetLanguage', $this->targetLanguage);
         }
-        if ($modifiedAfter !== null) {
-            $this->xmlWriter->writeAttribute('modifiedAfter', $targetLanguage);
+        if ($this->modifiedAfter !== null) {
+            $this->xmlWriter->writeAttribute('modifiedAfter', $this->modifiedAfter->format('c'));
         }
 
-        $this->exportNodes('/sites/' . $startingPoint, $contentContext, $sourceLanguage, $targetLanguage, $modifiedAfter);
+        $this->xmlWriter->startElement('nodes');
+        $this->exportNodes($this->startingPointNode->findNodePath(), $this->contentContext);
+        $this->xmlWriter->endElement(); // nodes
 
         $this->xmlWriter->endElement();
         $this->xmlWriter->endDocument();
@@ -188,15 +232,13 @@ class ExportService
      *
      * @param string $startingPointNodePath path to the root node of the sub-tree to export. The specified node will not be included, only its sub nodes.
      * @param ContentContext $contentContext
-     * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
      * @return void
+     * @throws \Exception
      */
-    public function exportNodes($startingPointNodePath, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    protected function exportNodes(string $startingPointNodePath, ContentContext $contentContext)
     {
-        $this->securityContext->withoutAuthorizationChecks(function () use ($startingPointNodePath, $contentContext, $sourceLanguage, $targetLanguage, $modifiedAfter) {
-            $nodeDataList = $this->findNodeDataListToExport($startingPointNodePath, $contentContext, $sourceLanguage, $targetLanguage, $modifiedAfter);
+        $this->securityContext->withoutAuthorizationChecks(function () use ($startingPointNodePath, $contentContext) {
+            $nodeDataList = $this->findNodeDataListToExport($startingPointNodePath, $contentContext);
             $this->exportNodeDataList($nodeDataList);
         });
     }
@@ -207,14 +249,12 @@ class ExportService
      *
      * @param string $pathStartingPoint Absolute path specifying the starting point
      * @param ContentContext $contentContext
-     * @param string $sourceLanguage
-     * @param string $targetLanguage
-     * @param \DateTime $modifiedAfter
      * @return array<NodeData>
+     * @throws \Neos\Flow\Persistence\Exception\IllegalObjectTypeException
      */
-    protected function findNodeDataListToExport($pathStartingPoint, ContentContext $contentContext, $sourceLanguage, $targetLanguage = null, \DateTime $modifiedAfter = null)
+    protected function findNodeDataListToExport(string $pathStartingPoint, ContentContext $contentContext): array
     {
-        $allowedContentCombinations = $this->getAllowedContentCombinationsForSourceLanguage($sourceLanguage);
+        $allowedContentCombinations = $this->getAllowedContentCombinationsForSourceLanguage($this->sourceLanguage);
         $sourceContexts = [];
 
         /** @var NodeData[] $nodeDataList */
@@ -225,7 +265,7 @@ class ExportService
                 [$contentContext->getNode($pathStartingPoint)->getNodeData()],
                 $this->nodeDataRepository->findByParentAndNodeType($pathStartingPoint, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false, true)
             );
-            $sourceContexts[] = $this->contextFactory->create([
+            $sourceContexts[] = $this->contentContextFactory->create([
                 'invisibleContentShown' => $contentContext->isInvisibleContentShown(),
                 'removedContentShown' => false,
                 'inaccessibleContentShown' => $contentContext->isInaccessibleContentShown(),
@@ -234,11 +274,11 @@ class ExportService
         }
 
         $uniqueNodeDataList = [];
-        usort($nodeDataList, function (NodeData $node1, NodeData $node2) use ($sourceLanguage) {
-            if ($node1->getDimensionValues()[$this->languageDimension][0] === $sourceLanguage) {
+        usort($nodeDataList, function (NodeData $node1, NodeData $node2) {
+            if ($node1->getDimensionValues()[$this->languageDimension][0] === $this->sourceLanguage) {
                 return 1;
             }
-            if ($node2->getDimensionValues()[$this->languageDimension][0] === $sourceLanguage) {
+            if ($node2->getDimensionValues()[$this->languageDimension][0] === $this->sourceLanguage) {
                 return -1;
             }
 
@@ -247,13 +287,13 @@ class ExportService
         foreach ($nodeDataList as $nodeData) {
             $uniqueNodeDataList[$nodeData->getIdentifier()] = $nodeData;
         }
-        $nodeDataList = array_filter(array_values($uniqueNodeDataList), function (NodeData $nodeData) use ($sourceContexts, $sourceLanguage) {
+        $nodeDataList = array_filter(array_values($uniqueNodeDataList), function (NodeData $nodeData) use ($sourceContexts) {
             /** @var ContentContext $sourceContext */
             foreach ($sourceContexts as $sourceContext) {
-                if ($sourceContext->getDimensions()[$this->languageDimension][0] !== $sourceLanguage) {
+                if ($sourceContext->getDimensions()[$this->languageDimension][0] !== $this->sourceLanguage) {
                     continue;
                 }
-                if ($nodeData->getDimensionValues()[$this->languageDimension][0] !== $sourceLanguage) {
+                if ($nodeData->getDimensionValues()[$this->languageDimension][0] !== $this->sourceLanguage) {
                     // "reload" nodedata in correct dimension
                     $node = $sourceContext->getNodeByIdentifier($nodeData->getIdentifier());
                     if ($node === null || $node->getNodeData() === null) {
@@ -302,28 +342,27 @@ class ExportService
      *
      * @param array<NodeData> $nodeDataList The nodes to export
      * @return void The result is written directly into $this->xmlWriter
+     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
      */
     protected function exportNodeDataList(array &$nodeDataList)
     {
-        $this->xmlWriter->startElement('nodes');
         $this->xmlWriter->writeAttribute('formatVersion', self::SUPPORTED_FORMAT_VERSION);
 
         $currentNodeDataIdentifier = null;
         foreach ($nodeDataList as $nodeData) {
             $this->writeNode($nodeData, $currentNodeDataIdentifier);
         }
-
-        $this->xmlWriter->endElement();
     }
 
     /**
      * Write a single node into the XML structure
      *
      * @param NodeData $nodeData The node data
-     * @param string $currentNodeDataIdentifier The "current" node, as passed by exportNodeDataList()
+     * @param string|null $currentNodeDataIdentifier The "current" node, as passed by exportNodeDataList()
      * @return void The result is written directly into $this->xmlWriter
+     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
      */
-    protected function writeNode(NodeData $nodeData, &$currentNodeDataIdentifier)
+    protected function writeNode(NodeData $nodeData, ?string &$currentNodeDataIdentifier)
     {
         $nodeName = $nodeData->getName();
 
@@ -349,6 +388,7 @@ class ExportService
      *
      * @param NodeData $nodeData
      * @return void
+     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
      */
     protected function writeVariant(NodeData $nodeData)
     {
@@ -383,6 +423,7 @@ class ExportService
      *
      * @param NodeData $nodeData
      * @return void
+     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
      */
     protected function writeProperties(NodeData $nodeData)
     {
@@ -411,7 +452,7 @@ class ExportService
      * @param string $propertyName The name of the property
      * @param string $propertyValue The value of the property
      */
-    protected function writeProperty($propertyName, $propertyValue)
+    protected function writeProperty(string $propertyName, string $propertyValue)
     {
         $this->xmlWriter->startElement($propertyName);
         $this->xmlWriter->writeAttribute('type', 'string');

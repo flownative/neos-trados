@@ -22,22 +22,11 @@ use Neos\Neos\Domain\Service\ContentContext;
  *
  * @Flow\Scope("singleton")
  */
-class ImportService
+class ImportService extends AbstractService
 {
     /**
-     * @var string
-     */
-    const SUPPORTED_FORMAT_VERSION = '1.0';
-
-    /**
-     * @Flow\InjectConfiguration(path = "languageDimension")
-     * @var string
-     */
-    protected $languageDimension;
-
-    /**
      * @Flow\Inject
-     * @var \Neos\Flow\Package\PackageManagerInterface
+     * @var \Neos\Flow\Package\PackageManager
      */
     protected $packageManager;
 
@@ -46,30 +35,6 @@ class ImportService
      * @var \Neos\Flow\Persistence\PersistenceManagerInterface
      */
     protected $persistenceManager;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\Neos\Domain\Repository\SiteRepository
-     */
-    protected $siteRepository;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\ContentRepository\Domain\Repository\WorkspaceRepository
-     */
-    protected $workspaceRepository;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\Neos\Domain\Service\ContentContextFactory
-     */
-    protected $contentContextFactory;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\Flow\Security\Context
-     */
-    protected $securityContext;
 
     /**
      * @Flow\Inject
@@ -110,11 +75,6 @@ class ImportService
     /**
      * @var string
      */
-    protected $sourceWorkspaceName;
-
-    /**
-     * @var string
-     */
     protected $sourceLanguage;
 
     /**
@@ -136,13 +96,13 @@ class ImportService
      *
      *
      * @param string $pathAndFilename
-     * @param string $workspaceName
-     * @param string $targetLanguage
+     * @param string|null $workspaceName
+     * @param string|null $targetLanguage
      * @return string
      * @throws InvalidPackageStateException
      * @throws UnknownPackageException
      */
-    public function importFromFile($pathAndFilename, $workspaceName = null, $targetLanguage = null)
+    public function importFromFile(string $pathAndFilename, string $workspaceName = null, string $targetLanguage = null): string
     {
         /** @var \Neos\Neos\Domain\Model\Site $importedSite */
         $site = null;
@@ -162,7 +122,7 @@ class ImportService
                 throw new \RuntimeException('No target language given (neither in XML nor as argument)', 1475578770);
             }
 
-            $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetByDimensionValues($this->languageDimension, [$this->targetLanguage]);
+            $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetsByTargetValues([$this->languageDimension => [$this->targetLanguage]]);
 
             if ($this->languageDimensionPreset === null) {
                 throw new \RuntimeException(sprintf('No language dimension preset found for language "%s".', $this->targetLanguage), 1571230670);
@@ -274,7 +234,6 @@ class ImportService
             break;
             default:
                 throw new \Exception(sprintf('Unexpected element <%s> ', $elementName), 1423578065);
-            break;
         }
     }
 
@@ -296,7 +255,6 @@ class ImportService
             break;
             default:
                 throw new \Exception(sprintf('Unexpected end element <%s> ', $reader->name), 1423578066);
-            break;
         }
     }
 
@@ -307,7 +265,7 @@ class ImportService
      * @param \XMLReader $reader reader positioned just after an opening dimensions-tag
      * @return array the dimension values
      */
-    protected function parseDimensionsElement(\XMLReader $reader)
+    protected function parseDimensionsElement(\XMLReader $reader): array
     {
         $dimensions = [];
         $currentDimension = null;
@@ -340,7 +298,7 @@ class ImportService
      * @return array the properties
      * @throws \Exception
      */
-    protected function parsePropertiesElement(\XMLReader $reader)
+    protected function parsePropertiesElement(\XMLReader $reader): array
     {
         $properties = [];
         $currentProperty = null;
@@ -398,7 +356,7 @@ class ImportService
             return $carry;
         });
 
-        $dimensions = array_merge($translatedData['dimensionValues'], [$this->languageDimension => $this->languageDimensionPreset['values']]);
+        $dimensions = array_merge($translatedData['dimensionValues'], [$this->languageDimension => $this->languageDimensionPreset[$this->languageDimension]['values']]);
         $targetDimensions = array_map(
             function ($values) {
                 return current($values);

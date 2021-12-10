@@ -2,3 +2,6 @@ Flownative:
   Neos:
     Trados:
       languageDimension: 'language'
+      export:
+        workspace: 'live'
+        documentTypeFilter: 'Neos.Neos:Document'

@@ -23,6 +23,7 @@ use Neos\Flow\Cli\CommandController;
  */
 class TradosCommandController extends CommandController
 {
+
     /**
      * @Flow\Inject
      * @var ExportService
@@ -40,25 +41,28 @@ class TradosCommandController extends CommandController
      *
      * This command exports a specific site including all content into an XML format.
      *
-     * @param string $startingPoint The node with which to start the export, relative to the site node. Optional.
+     * @param string $startingPoint The node with which to start the export: as identifier or the path relative to the site node.
      * @param string $sourceLanguage The language to use as base for the export.
-     * @param string $targetLanguage The target language for the translation, optional.
-     * @param string $filename Path and filename to the XML file to create.
-     * @param string $modifiedAfter
+     * @param string|null $targetLanguage The target language for the translation, optional.
+     * @param string|null $filename Path and filename to the XML file to create.
+     * @param string|null $modifiedAfter
      * @param boolean $ignoreHidden
      * @return void
+     * @throws \Exception
      */
-    public function exportCommand($startingPoint, $sourceLanguage, $targetLanguage = null, $filename = null, $modifiedAfter = null, $ignoreHidden = true)
+    public function exportCommand(string $startingPoint, string $sourceLanguage, string $targetLanguage = null, string $filename = null, string $modifiedAfter = null, bool $ignoreHidden = true)
     {
         if ($modifiedAfter !== null) {
             $modifiedAfter = new \DateTime($modifiedAfter);
         }
 
+        $this->exportService->initialize($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden);
+
         try {
             if ($filename === null) {
-                $this->output($this->exportService->exportToString($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden));
+                $this->output($this->exportService->exportToString());
             } else {
-                $this->exportService->exportToFile($filename, $startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden);
+                $this->exportService->exportToFile($filename);
                 $this->outputLine('<success>The tree starting at "/sites/%s" has been exported to "%s".</success>', [$startingPoint, $filename]);
             }
         } catch (\Exception $exception) {
@@ -73,10 +77,10 @@ class TradosCommandController extends CommandController
      * This command imports translated content from XML.
      *
      * @param string $filename Path and filename to the XML file to import.
-     * @param string $targetLanguage The target language for the translation, optional if included in XML.
+     * @param string|null $targetLanguage The target language for the translation, optional if included in XML.
      * @param string $workspace A workspace to import into, optional but recommended
      */
-    public function importCommand($filename, $targetLanguage = null, $workspace = 'live')
+    public function importCommand(string $filename, string $targetLanguage = null, string $workspace = 'live')
     {
         try {
             $importedLanguage = $this->importService->importFromFile($filename, $workspace, $targetLanguage);
