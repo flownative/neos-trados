@@ -13,9 +13,9 @@ namespace Flownative\Neos\Trados\Service;
 
 use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
-use Neos\ContentRepository\Domain\Model\Workspace;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Persistence\Exception\IllegalObjectTypeException;
 use Neos\Neos\Domain\Model\Site;
 use Neos\Neos\Domain\Service\ContentContext;
 
@@ -258,7 +258,7 @@ class ExportService extends AbstractService
      * @param string $pathStartingPoint Absolute path specifying the starting point
      * @param ContentContext $contentContext
      * @return array<NodeData>
-     * @throws \Neos\Flow\Persistence\Exception\IllegalObjectTypeException
+     * @throws IllegalObjectTypeException
      */
     protected function findNodeDataListToExport(string $pathStartingPoint, ContentContext $contentContext): array
     {
@@ -268,10 +268,10 @@ class ExportService extends AbstractService
         /** @var NodeData[] $nodeDataList */
         $nodeDataList = [];
         foreach ($allowedContentCombinations as $contentDimensions) {
-            // If exclude-child-documents argument is set to true, only add content child nodes to nodeDataList (recursively), don't descend into document child nodes.
             if ($this->excludeChildDocuments === true) {
                 $node = $contentContext->getNode($pathStartingPoint)->getNodeData();
-                $childNodes = $this->getChildNodeDataOnPage($node, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown());
+                $childNodes = [];
+                $this->collectContentNodes($node, $contentDimensions, $contentContext, $childNodes);
             } else {
                 $childNodes = $this->nodeDataRepository->findByParentAndNodeType($pathStartingPoint, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false, true);
             }
@@ -489,50 +489,18 @@ class ExportService extends AbstractService
     }
 
     /**
-     * Find all content nodes under the given node.
-     *
-     * @param NodeData $node
-     * @param Workspace $workspace
-     * @param array $contentDimensions
-     * @param boolean $isRemovedContentShown
-     * @return array
-     */
-    private function getChildNodeDataOnPage(NodeData $node, Workspace $workspace, array $contentDimensions, bool $isRemovedContentShown): array
-    {
-        $results = [];
-        // We traverse through all Content (=!Document) nodes underneath the start node here and add it to the result list.
-        // NOTE: The $results list is passed into the callback by reference, so that we can modify it in-place.
-        $this->traverseRecursively($node, '!Neos.Neos:Document', $workspace, $contentDimensions, $isRemovedContentShown, function($node) use (&$results) {
-            $results[] = $node;
-        });
-        return $results;
-    }
-
-    /**
-     * This function recursively traverses all nodes underneath $node which match $nodeTypeFilter; and calls
+     * This function recursively traverses all nodes underneath $node which are content; and calls
      * $callback on each of them (Depth-First Traversal).
      *
-     * You have to watch out yourself to not build very deep nesting; so we suggest to use a node type filter
-     * like "!Neos.Neos:Document" or "Neos.Neos:ContentCollection, Neos.Neos:Content" which matches only content.
-     *
-     * For reference how the Node Type filter works, see:
-     *
-     * - NodeDataRepository::addNodeTypeFilterConstraintsToQueryBuilder
-     * - NodeDataRepository::getNodeTypeFilterConstraintsForDql
-     *
-     * @param NodeData $node
-     * @param string $nodeTypeFilter
-     * @param Workspace $workspace
-     * @param array $contentDimensions
-     * @param boolean $isRemovedContentShown
-     * @param \Closure $callback
+     * @throws IllegalObjectTypeException
      */
-    private function traverseRecursively(NodeData $node, string $nodeTypeFilter, Workspace $workspace, array $contentDimensions, bool $isRemovedContentShown, \Closure $callback)
+    private function collectContentNodes(NodeData $node, array $contentDimensions, ContentContext $contentContext, array &$nodes): void
     {
-        $callback($node);
-        $childNodes = $this->nodeDataRepository->findByParentAndNodeType($node->getPath(), $nodeTypeFilter, $workspace, $contentDimensions, $isRemovedContentShown ? null : false, false);
+        $nodes[] = $node;
+
+        $childNodes = $this->nodeDataRepository->findByParentAndNodeType($node->getPath(), '!Neos.Neos:Document', $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false);
         foreach ($childNodes as $childNode) {
-            $this->traverseRecursively($childNode, $nodeTypeFilter, $workspace, $contentDimensions, $isRemovedContentShown, $callback);
+            $this->collectContentNodes($childNode, $contentDimensions, $contentContext, $nodes);
         }
     }
 }
