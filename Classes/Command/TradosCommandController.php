@@ -38,7 +38,7 @@ class TradosCommandController extends CommandController
     protected $importService;
 
     /**
-     * Export sites content (e.g. trados:export --filename "acme.com.xml" --source-language "en" --target-language "cz")
+     * Export sites content (e.g. trados:export --filename acme.com.xml --target-language cz amecom en)
      *
      * This command exports a specific site including all content into an XML format.
      *
@@ -46,9 +46,9 @@ class TradosCommandController extends CommandController
      * @param string $sourceLanguage The language to use as base for the export.
      * @param string|null $targetLanguage The target language for the translation, optional.
      * @param string|null $filename Path and filename to the XML file to create.
-     * @param string|null $modifiedAfter
-     * @param bool $ignoreHidden
-     * @param bool $excludeChildDocuments
+     * @param string|null $modifiedAfter A date/time to filter for nodes by modification time; anything PHP can parse in the DateTime constructor.
+     * @param bool $ignoreHidden If set to false, hidden nodes will be exported, too.
+     * @param bool $excludeChildDocuments If set to true, child documents will not be exported; use to export a single document's content.
      * @return void
      * @throws \Exception
      */
