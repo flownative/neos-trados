@@ -15,6 +15,7 @@ use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Persistence\Exception\IllegalObjectTypeException;
 use Neos\Neos\Domain\Model\Site;
 use Neos\Neos\Domain\Service\ContentContext;
 
@@ -104,6 +105,11 @@ class ExportService extends AbstractService
     protected bool $ignoreHidden;
 
     /**
+     * @var bool
+     */
+    protected bool $excludeChildDocuments;
+
+    /**
      * @var int
      */
     protected int $depth;
@@ -123,6 +129,7 @@ class ExportService extends AbstractService
         string $targetLanguage = null,
         \DateTime $modifiedAfter = null,
         bool $ignoreHidden = true,
+        bool $excludeChildDocuments = false,
         string $documentTypeFilter = 'Neos.Neos:Document',
         int $depth = 0
     ) {
@@ -131,6 +138,7 @@ class ExportService extends AbstractService
         $this->targetLanguage = $targetLanguage;
         $this->modifiedAfter = $modifiedAfter;
         $this->ignoreHidden = $ignoreHidden;
+        $this->excludeChildDocuments = $excludeChildDocuments;
         $this->documentTypeFilter = $documentTypeFilter;
         $this->depth = $depth;
 
@@ -250,7 +258,7 @@ class ExportService extends AbstractService
      * @param string $pathStartingPoint Absolute path specifying the starting point
      * @param ContentContext $contentContext
      * @return array<NodeData>
-     * @throws \Neos\Flow\Persistence\Exception\IllegalObjectTypeException
+     * @throws IllegalObjectTypeException
      */
     protected function findNodeDataListToExport(string $pathStartingPoint, ContentContext $contentContext): array
     {
@@ -260,10 +268,17 @@ class ExportService extends AbstractService
         /** @var NodeData[] $nodeDataList */
         $nodeDataList = [];
         foreach ($allowedContentCombinations as $contentDimensions) {
+            if ($this->excludeChildDocuments === true) {
+                $node = $contentContext->getNode($pathStartingPoint)->getNodeData();
+                $childNodes = [];
+                $this->collectContentNodes($node, $contentDimensions, $contentContext, $childNodes);
+            } else {
+                $childNodes = $this->nodeDataRepository->findByParentAndNodeType($pathStartingPoint, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false, true);
+            }
             $nodeDataList = array_merge(
                 $nodeDataList,
                 [$contentContext->getNode($pathStartingPoint)->getNodeData()],
-                $this->nodeDataRepository->findByParentAndNodeType($pathStartingPoint, null, $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false, true)
+                $childNodes
             );
             $sourceContexts[] = $this->contentContextFactory->create([
                 'invisibleContentShown' => $contentContext->isInvisibleContentShown(),
@@ -471,5 +486,21 @@ class ExportService extends AbstractService
         return array_filter($allAllowedContentCombinations, function ($combination) use ($sourceLanguage) {
             return (isset($combination[$this->languageDimension]) && $combination[$this->languageDimension][0] === $sourceLanguage);
         });
+    }
+
+    /**
+     * This function recursively traverses all nodes underneath $node which are content; and calls
+     * $callback on each of them (Depth-First Traversal).
+     *
+     * @throws IllegalObjectTypeException
+     */
+    private function collectContentNodes(NodeData $node, array $contentDimensions, ContentContext $contentContext, array &$nodes): void
+    {
+        $nodes[] = $node;
+
+        $childNodes = $this->nodeDataRepository->findByParentAndNodeType($node->getPath(), '!Neos.Neos:Document', $contentContext->getWorkspace(), $contentDimensions, $contentContext->isRemovedContentShown() ? null : false);
+        foreach ($childNodes as $childNode) {
+            $this->collectContentNodes($childNode, $contentDimensions, $contentContext, $nodes);
+        }
     }
 }

@@ -26,14 +26,15 @@ The export command:
       ./flow trados:export [<options>] <starting point> <source language>
     
     ARGUMENTS:
-      --starting-point     The node with which to start the export, relative to the
-                           site node. Optional.
-      --source-language    The language to use as base for the export.
+      --starting-point              The node with which to start the export, relative to the
+                                    site node. Optional.
+      --source-language             The language to use as base for the export.
     
     OPTIONS:
-      --target-language    The target language for the translation, optional.
-      --filename           Path and filename to the XML file to create.
+      --target-language             The target language for the translation, optional.
+      --filename                    Path and filename to the XML file to create.
       --modified-after
+      --exclude-child-documents     If child documents should not be included in the export.
 
 The import command:
 

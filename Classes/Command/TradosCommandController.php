@@ -47,16 +47,17 @@ class TradosCommandController extends CommandController
      * @param string|null $filename Path and filename to the XML file to create.
      * @param string|null $modifiedAfter
      * @param boolean $ignoreHidden
+     * @param boolean $excludeChildDocuments
      * @return void
      * @throws \Exception
      */
-    public function exportCommand(string $startingPoint, string $sourceLanguage, string $targetLanguage = null, string $filename = null, string $modifiedAfter = null, bool $ignoreHidden = true)
+    public function exportCommand(string $startingPoint, string $sourceLanguage, string $targetLanguage = null, string $filename = null, string $modifiedAfter = null, bool $ignoreHidden = true, bool $excludeChildDocuments = false)
     {
         if ($modifiedAfter !== null) {
             $modifiedAfter = new \DateTime($modifiedAfter);
         }
 
-        $this->exportService->initialize($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden);
+        $this->exportService->initialize($startingPoint, $sourceLanguage, $targetLanguage, $modifiedAfter, $ignoreHidden, $excludeChildDocuments);
 
         try {
             if ($filename === null) {
