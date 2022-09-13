@@ -4,4 +4,3 @@ Flownative:
       languageDimension: 'language'
       export:
         workspace: 'live'
-        documentTypeFilter: 'Neos.Neos:Document'

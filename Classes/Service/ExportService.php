@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Flownative\Neos\Trados\Service;
 
 /*
@@ -14,6 +16,8 @@ namespace Flownative\Neos\Trados\Service;
 use Neos\ContentRepository\Domain\Model\NodeData;
 use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Repository\NodeDataRepository;
+use Neos\ContentRepository\Domain\Service\ContentDimensionCombinator;
+use Neos\ContentRepository\Exception\NodeTypeNotFoundException;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Persistence\Exception\IllegalObjectTypeException;
 use Neos\Neos\Domain\Model\Site;
@@ -27,29 +31,10 @@ use Neos\Neos\Domain\Service\ContentContext;
 class ExportService extends AbstractService
 {
     /**
-     * @Flow\InjectConfiguration(path = "export.workspace")
+     * @Flow\InjectConfiguration(path="export.workspace")
      * @var string
      */
     protected string $workspaceName;
-
-    /**
-     * @Flow\InjectConfiguration(path = "export.documentTypeFilter")
-     * @var string
-     */
-    protected string $documentTypeFilter;
-
-    /**
-     * The XMLWriter that is used to construct the export.
-     *
-     * @var \XMLWriter
-     */
-    protected $xmlWriter;
-
-    /**
-     * @Flow\Inject
-     * @var \Neos\ContentRepository\Domain\Service\NodeTypeManager
-     */
-    protected $nodeTypeManager;
 
     /**
      * @Flow\Inject
@@ -59,88 +44,36 @@ class ExportService extends AbstractService
 
     /**
      * @Flow\Inject
-     * @var \Neos\ContentRepository\Domain\Service\ContentDimensionCombinator
+     * @var ContentDimensionCombinator
      */
     protected $contentDimensionCombinator;
 
-    /**
-     * @var ContentContext
-     *
-     */
+    protected \XMLWriter $xmlWriter;
     protected ContentContext $contentContext;
-
-    /**
-     * @var string
-     */
     protected string $startingPoint;
-
-    /**
-     * @var NodeInterface
-     */
     protected NodeInterface $startingPointNode;
-
-    /**
-     * @var Site
-     */
     protected Site $site;
-
-    /**
-     * @var string
-     */
     protected string $sourceLanguage;
-
-    /**
-     * @var string|null
-     */
     protected ?string $targetLanguage;
-
-    /**
-     * @var \DateTime|null
-     */
     protected ?\DateTime $modifiedAfter;
+    protected bool $ignoreHidden = true;
+    protected int $depth = 0;
+    protected bool $excludeChildDocuments = false;
 
-    /**
-     * @var bool
-     */
-    protected bool $ignoreHidden;
-
-    /**
-     * @var bool
-     */
-    protected bool $excludeChildDocuments;
-
-    /**
-     * @var int
-     */
-    protected int $depth;
-
-    /**
-     * @param string $startingPoint
-     * @param string $sourceLanguage
-     * @param string|null $targetLanguage
-     * @param \DateTime|null $modifiedAfter
-     * @param bool $ignoreHidden
-     * @param string $documentTypeFilter
-     * @param int $depth
-     */
     public function initialize(
         string $startingPoint,
         string $sourceLanguage,
         string $targetLanguage = null,
         \DateTime $modifiedAfter = null,
         bool $ignoreHidden = true,
-        bool $excludeChildDocuments = false,
-        string $documentTypeFilter = 'Neos.Neos:Document',
-        int $depth = 0
-    ) {
+        bool $excludeChildDocuments = false
+    ): void {
         $this->startingPoint = $startingPoint;
         $this->sourceLanguage = $sourceLanguage;
         $this->targetLanguage = $targetLanguage;
         $this->modifiedAfter = $modifiedAfter;
         $this->ignoreHidden = $ignoreHidden;
         $this->excludeChildDocuments = $excludeChildDocuments;
-        $this->documentTypeFilter = $documentTypeFilter;
-        $this->depth = $depth;
 
         /** @var ContentContext $contentContext */
         $contentContext = $this->contentContextFactory->create([
@@ -161,7 +94,7 @@ class ExportService extends AbstractService
         }
 
         $this->startingPointNode = $startingPointNode;
-        $pathArray = explode('/', $this->startingPointNode->findNodePath());
+        $pathArray = explode('/', (string)$this->startingPointNode->findNodePath());
         $this->site = $this->siteRepository->findOneByNodeName($pathArray[2]);
 
         if ($this->workspaceRepository->findOneByName($this->workspaceName) === null) {
@@ -183,17 +116,15 @@ class ExportService extends AbstractService
 
         $this->exportToXmlWriter();
 
-        return $this->xmlWriter->outputMemory(true);
+        return $this->xmlWriter->outputMemory();
     }
 
     /**
      * Export into the given file.
      *
-     * @param string $pathAndFilename Path to where the export output should be saved to
-     * @return void
      * @throws \Exception
      */
-    public function exportToFile(string $pathAndFilename)
+    public function exportToFile(string $pathAndFilename): void
     {
         $this->xmlWriter = new \XMLWriter();
         $this->xmlWriter->openUri($pathAndFilename);
@@ -207,10 +138,9 @@ class ExportService extends AbstractService
     /**
      * Export to the XMLWriter.
      *
-     * @return void
      * @throws \Exception
      */
-    protected function exportToXmlWriter()
+    protected function exportToXmlWriter(): void
     {
         $this->xmlWriter->startDocument('1.0', 'UTF-8');
         $this->xmlWriter->startElement('content');
@@ -227,7 +157,7 @@ class ExportService extends AbstractService
         }
 
         $this->xmlWriter->startElement('nodes');
-        $this->exportNodes($this->startingPointNode->findNodePath(), $this->contentContext);
+        $this->exportNodes((string)$this->startingPointNode->findNodePath(), $this->contentContext);
         $this->xmlWriter->endElement(); // nodes
 
         $this->xmlWriter->endElement();
@@ -235,15 +165,10 @@ class ExportService extends AbstractService
     }
 
     /**
-     * Exports the node data of all nodes in the given sub-tree
-     * by writing them to the given XMLWriter.
-     *
      * @param string $startingPointNodePath path to the root node of the sub-tree to export. The specified node will not be included, only its sub nodes.
-     * @param ContentContext $contentContext
-     * @return void
      * @throws \Exception
      */
-    protected function exportNodes(string $startingPointNodePath, ContentContext $contentContext)
+    protected function exportNodes(string $startingPointNodePath, ContentContext $contentContext): void
     {
         $this->securityContext->withoutAuthorizationChecks(function () use ($startingPointNodePath, $contentContext) {
             $nodeDataList = $this->findNodeDataListToExport($startingPointNodePath, $contentContext);
@@ -255,9 +180,6 @@ class ExportService extends AbstractService
      * Find all nodes of the specified workspace lying below the path specified by
      * (and including) the given starting point.
      *
-     * @param string $pathStartingPoint Absolute path specifying the starting point
-     * @param ContentContext $contentContext
-     * @return array<NodeData>
      * @throws IllegalObjectTypeException
      */
     protected function findNodeDataListToExport(string $pathStartingPoint, ContentContext $contentContext): array
@@ -320,7 +242,7 @@ class ExportService extends AbstractService
                 if (!$sourceContext->isInvisibleContentShown()) {
                     // filter out node if any of the parents is hidden
                     $parent = $nodeData;
-                    while ($parent !== null) {
+                    while (true) {
                         if ($parent->isHidden()) {
                             return false;
                         }
@@ -334,14 +256,14 @@ class ExportService extends AbstractService
                 }
             }
 
-            return $nodeData !== null;
+            return true;
         });
 
         // Sort nodeDataList by path, replacing "/" with "!" (the first visible ASCII character)
         // because there may be characters like "-" in the node path
         // that would break the sorting order
         usort($nodeDataList,
-            function (NodeData $node1, NodeData $node2) {
+            static function (NodeData $node1, NodeData $node2) {
                 return strcmp(
                     str_replace("/", "!", $node1->getPath()),
                     str_replace("/", "!", $node2->getPath())
@@ -353,13 +275,9 @@ class ExportService extends AbstractService
     }
 
     /**
-     * Exports the given Nodes into the XML structure, contained in <nodes> </nodes> tags.
-     *
-     * @param array<NodeData> $nodeDataList The nodes to export
-     * @return void The result is written directly into $this->xmlWriter
-     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
+     * @throws NodeTypeNotFoundException
      */
-    protected function exportNodeDataList(array &$nodeDataList)
+    protected function exportNodeDataList(array $nodeDataList): void
     {
         $this->xmlWriter->writeAttribute('formatVersion', self::SUPPORTED_FORMAT_VERSION);
 
@@ -370,14 +288,9 @@ class ExportService extends AbstractService
     }
 
     /**
-     * Write a single node into the XML structure
-     *
-     * @param NodeData $nodeData The node data
-     * @param string|null $currentNodeDataIdentifier The "current" node, as passed by exportNodeDataList()
-     * @return void The result is written directly into $this->xmlWriter
-     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
+     * @throws NodeTypeNotFoundException
      */
-    protected function writeNode(NodeData $nodeData, ?string &$currentNodeDataIdentifier)
+    protected function writeNode(NodeData $nodeData, ?string &$currentNodeDataIdentifier): void
     {
         $nodeName = $nodeData->getName();
 
@@ -399,13 +312,9 @@ class ExportService extends AbstractService
     }
 
     /**
-     * Write a node variant into the XML structure
-     *
-     * @param NodeData $nodeData
-     * @return void
-     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
+     * @throws NodeTypeNotFoundException
      */
-    protected function writeVariant(NodeData $nodeData)
+    protected function writeVariant(NodeData $nodeData): void
     {
         $this->xmlWriter->startElement('variant');
         $this->xmlWriter->writeAttribute('nodeType', $nodeData->getNodeType()->getName());
@@ -416,13 +325,7 @@ class ExportService extends AbstractService
         $this->xmlWriter->endElement();
     }
 
-    /**
-     * Write dimensions and their values into the XML structure.
-     *
-     * @param NodeData $nodeData
-     * @return void
-     */
-    protected function writeDimensions(NodeData $nodeData)
+    protected function writeDimensions(NodeData $nodeData): void
     {
         $this->xmlWriter->startElement('dimensions');
         foreach ($nodeData->getDimensionValues() as $dimensionKey => $dimensionValues) {
@@ -434,13 +337,9 @@ class ExportService extends AbstractService
     }
 
     /**
-     * Write properties and their values into the XML structure.
-     *
-     * @param NodeData $nodeData
-     * @return void
-     * @throws \Neos\ContentRepository\Exception\NodeTypeNotFoundException
+     * @throws NodeTypeNotFoundException
      */
-    protected function writeProperties(NodeData $nodeData)
+    protected function writeProperties(NodeData $nodeData): void
     {
         $this->xmlWriter->startElement('properties');
         $nodeType = $nodeData->getNodeType();
@@ -461,17 +360,11 @@ class ExportService extends AbstractService
         $this->xmlWriter->endElement();
     }
 
-    /**
-     * Writes out a single string property into the XML structure.
-     *
-     * @param string $propertyName The name of the property
-     * @param string $propertyValue The value of the property
-     */
-    protected function writeProperty(string $propertyName, string $propertyValue)
+    protected function writeProperty(string $propertyName, string $propertyValue): void
     {
         $this->xmlWriter->startElement($propertyName);
         $this->xmlWriter->writeAttribute('type', 'string');
-        if ($propertyValue !== '' && $propertyValue !== null) {
+        if ($propertyValue !== '') {
             $this->xmlWriter->startCData();
             $this->xmlWriter->text($propertyValue);
             $this->xmlWriter->endCData();

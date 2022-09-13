@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Flownative\Neos\Trados\Service;
 
 /*
@@ -11,14 +13,15 @@ namespace Flownative\Neos\Trados\Service;
  * source code.
  */
 
+use Neos\ContentRepository\Domain\Repository\WorkspaceRepository;
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Security\Context as SecurityContext;
+use Neos\Neos\Domain\Repository\SiteRepository;
+use Neos\Neos\Domain\Service\ContentContextFactory;
 
 class AbstractService
 {
-    /**
-     * @var string
-     */
-    const SUPPORTED_FORMAT_VERSION = '1.0';
+    protected const SUPPORTED_FORMAT_VERSION = '1.0';
 
     /**
      * @Flow\InjectConfiguration(path = "languageDimension")
@@ -28,25 +31,25 @@ class AbstractService
 
     /**
      * @Flow\Inject
-     * @var \Neos\Neos\Domain\Service\ContentContextFactory
+     * @var ContentContextFactory
      */
     protected $contentContextFactory;
 
     /**
      * @Flow\Inject
-     * @var \Neos\Flow\Security\Context
+     * @var SecurityContext
      */
     protected $securityContext;
 
     /**
      * @Flow\Inject
-     * @var \Neos\Neos\Domain\Repository\SiteRepository
+     * @var SiteRepository
      */
     protected $siteRepository;
 
     /**
      * @Flow\Inject
-     * @var \Neos\ContentRepository\Domain\Repository\WorkspaceRepository
+     * @var WorkspaceRepository
      */
     protected $workspaceRepository;
 }
