@@ -1,4 +1,7 @@
 <?php
+/** @noinspection PhpComposerExtensionStubsInspection */
+declare(strict_types=1);
+
 namespace Flownative\Neos\Trados\Service;
 
 /*
@@ -11,11 +14,17 @@ namespace Flownative\Neos\Trados\Service;
  * source code.
  */
 
+use Neos\ContentRepository\Domain\Model\NodeInterface;
 use Neos\ContentRepository\Domain\Model\Workspace;
+use Neos\ContentRepository\Exception\NodeException;
 use Neos\Flow\Annotations as Flow;
 use Neos\Flow\Package\Exception\InvalidPackageStateException;
 use Neos\Flow\Package\Exception\UnknownPackageException;
+use Neos\Flow\Package\PackageManager;
+use Neos\Flow\Persistence\Exception\IllegalObjectTypeException;
+use Neos\Flow\Persistence\PersistenceManagerInterface;
 use Neos\Neos\Domain\Service\ContentContext;
+use Neos\Neos\Domain\Service\ContentDimensionPresetSourceInterface;
 
 /**
  * The Trados Import Service
@@ -26,88 +35,44 @@ class ImportService extends AbstractService
 {
     /**
      * @Flow\Inject
-     * @var \Neos\Flow\Package\PackageManager
+     * @var PackageManager
      */
     protected $packageManager;
 
     /**
      * @Flow\Inject
-     * @var \Neos\Flow\Persistence\PersistenceManagerInterface
+     * @var PersistenceManagerInterface
      */
     protected $persistenceManager;
 
     /**
      * @Flow\Inject
-     * @var \Neos\Neos\Domain\Service\ContentDimensionPresetSourceInterface
+     * @var ContentDimensionPresetSourceInterface
      */
     protected $contentDimensionPresetSource;
 
-    /**
-     * @var \XMLReader
-     */
-    protected $xmlReader;
+    protected string $currentNodeIdentifier;
+    protected string $currentNodeName;
+    protected array $currentNodeData;
+    protected array $currentNodeVariants;
+    protected ?Workspace $targetWorkspace;
+    protected string $sourceLanguage;
+    protected ?string $targetLanguage = null;
+    protected ContentContext $contentContext;
+    protected array $languageDimensionPreset;
 
     /**
-     * @var string
-     */
-    protected $currentNodeIdentifier;
-
-    /**
-     * @var string
-     */
-    protected $currentNodeName;
-
-    /**
-     * @var array
-     */
-    protected $currentNodeData;
-
-    /**
-     * @var array
-     */
-    protected $currentNodeVariants;
-
-    /**
-     * @var Workspace
-     */
-    protected $targetWorkspace;
-
-    /**
-     * @var string
-     */
-    protected $sourceLanguage;
-
-    /**
-     * @var string
-     */
-    protected $targetLanguage;
-
-    /**
-     * @var ContentContext
-     */
-    protected $contentContext;
-
-    /**
-     * @var array
-     */
-    protected $languageDimensionPreset;
-
-    /**
-     *
-     *
-     * @param string $pathAndFilename
-     * @param string|null $workspaceName
-     * @param string|null $targetLanguage
-     * @return string
      * @throws InvalidPackageStateException
      * @throws UnknownPackageException
+     * @throws IllegalObjectTypeException
      */
     public function importFromFile(string $pathAndFilename, string $workspaceName = null, string $targetLanguage = null): string
     {
-        /** @var \Neos\Neos\Domain\Model\Site $importedSite */
-        $site = null;
         $xmlReader = new \XMLReader();
-        $xmlReader->open($pathAndFilename, null, LIBXML_PARSEHUGE);
+        $opened = $xmlReader->open($pathAndFilename, null, LIBXML_PARSEHUGE);
+        if ($opened === false) {
+            throw new \RuntimeException('Could not open file', 1663067260);
+        }
 
         while ($xmlReader->read()) {
             if ($xmlReader->nodeType !== \XMLReader::ELEMENT || $xmlReader->name !== 'content') {
@@ -124,7 +89,7 @@ class ImportService extends AbstractService
 
             $this->languageDimensionPreset = $this->contentDimensionPresetSource->findPresetsByTargetValues([$this->languageDimension => [$this->targetLanguage]]);
 
-            if ($this->languageDimensionPreset === null) {
+            if ($this->languageDimensionPreset === []) {
                 throw new \RuntimeException(sprintf('No language dimension preset found for language "%s".', $this->targetLanguage), 1571230670);
             }
 
@@ -176,12 +141,9 @@ class ImportService extends AbstractService
     }
 
     /**
-     * Imports the nodes from the xml reader.
-     *
-     * @param \XMLReader $xmlReader A prepared XML Reader with the nodes to import
-     * @return void
+     * @throws NodeException
      */
-    protected function importNodes(\XMLReader $xmlReader)
+    protected function importNodes(\XMLReader $xmlReader): void
     {
         while ($xmlReader->read()) {
             if ($xmlReader->nodeType === \XMLReader::COMMENT) {
@@ -195,7 +157,7 @@ class ImportService extends AbstractService
                     }
                 break;
                 case \XMLReader::END_ELEMENT:
-                    if ((string)$xmlReader->name === 'nodes') {
+                    if ($xmlReader->name === 'nodes') {
                         return; // all done, reached the closing </nodes> tag
                     }
                     $this->parseEndElement($xmlReader);
@@ -204,14 +166,7 @@ class ImportService extends AbstractService
         }
     }
 
-    /**
-     * Parses the given XML element and adds its content to the internal content tree
-     *
-     * @param \XMLReader $xmlReader The XML Reader with the element to be parsed as its root
-     * @return void
-     * @throws \Exception
-     */
-    protected function parseElement(\XMLReader $xmlReader)
+    protected function parseElement(\XMLReader $xmlReader): void
     {
         $elementName = $xmlReader->name;
         switch ($elementName) {
@@ -233,18 +188,14 @@ class ImportService extends AbstractService
                 $this->currentNodeData['properties'] = $this->parsePropertiesElement($xmlReader);
             break;
             default:
-                throw new \Exception(sprintf('Unexpected element <%s> ', $elementName), 1423578065);
+                throw new \RuntimeException(sprintf('Unexpected element <%s> ', $elementName), 1423578065);
         }
     }
 
     /**
-     * Parses the closing tags writes data to the database then
-     *
-     * @param \XMLReader $reader
-     * @return void
-     * @throws \Exception
+     * @throws NodeException
      */
-    protected function parseEndElement(\XMLReader $reader)
+    protected function parseEndElement(\XMLReader $reader): void
     {
         switch ($reader->name) {
             case 'node':
@@ -254,7 +205,7 @@ class ImportService extends AbstractService
                 $this->persistNodeData($this->currentNodeData);
             break;
             default:
-                throw new \Exception(sprintf('Unexpected end element <%s> ', $reader->name), 1423578066);
+                throw new \RuntimeException(sprintf('Unexpected end element <%s> ', $reader->name), 1423578066);
         }
     }
 
@@ -263,7 +214,6 @@ class ImportService extends AbstractService
      * 'dimension name' => dimension value
      *
      * @param \XMLReader $reader reader positioned just after an opening dimensions-tag
-     * @return array the dimension values
      */
     protected function parseDimensionsElement(\XMLReader $reader): array
     {
@@ -295,8 +245,6 @@ class ImportService extends AbstractService
      * 'property name' => property value
      *
      * @param \XMLReader $reader reader positioned just after an opening properties-tag
-     * @return array the properties
-     * @throws \Exception
      */
     protected function parsePropertiesElement(\XMLReader $reader): array
     {
@@ -308,7 +256,7 @@ class ImportService extends AbstractService
                 case \XMLReader::ELEMENT:
                     $currentProperty = $reader->name;
                     if ($reader->getAttribute('type') !== 'string') {
-                        throw new \Exception(sprintf('Non-string property "%s" found in XML file', $currentProperty), 1474362378);
+                        throw new \RuntimeException(sprintf('Non-string property "%s" found in XML file', $currentProperty), 1474362378);
                     }
 
                     if ($reader->isEmptyElement) {
@@ -331,17 +279,16 @@ class ImportService extends AbstractService
     }
 
     /**
-     * @param array $translatedData
-     * @return void
+     * @throws NodeException
      */
-    protected function persistNodeData(array $translatedData)
+    protected function persistNodeData(array $translatedData): void
     {
         if ($this->currentNodeVariants === []) {
             return;
         }
 
-        /** @var \Neos\ContentRepository\Domain\Model\NodeInterface $currentNodeVariant */
-        $currentNodeVariant = array_reduce($this->currentNodeVariants, function ($carry, \Neos\ContentRepository\Domain\Model\NodeInterface $nodeVariant) use ($translatedData) {
+        /** @var NodeInterface $currentNodeVariant */
+        $currentNodeVariant = array_reduce($this->currentNodeVariants, function ($carry, NodeInterface $nodeVariant) use ($translatedData) {
             // best match
             $dimensionsToMatch = array_merge($translatedData['dimensionValues'], [$this->languageDimension => [$this->targetLanguage]]);
             if ($nodeVariant->getDimensions() === $dimensionsToMatch) {
@@ -358,7 +305,7 @@ class ImportService extends AbstractService
 
         $dimensions = array_merge($translatedData['dimensionValues'], [$this->languageDimension => $this->languageDimensionPreset[$this->languageDimension]['values']]);
         $targetDimensions = array_map(
-            function ($values) {
+            static function ($values) {
                 return current($values);
             },
             $dimensions
