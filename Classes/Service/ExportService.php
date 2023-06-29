@@ -254,6 +254,15 @@ class ExportService extends AbstractService
                         $parent = $parentNode->getNodeData();
                     }
                 }
+
+                if (!is_null($this->modifiedAfter)) {
+                    // filter out node if last modification date is _before_ modifiedAfter option
+                    $lastModified = $nodeData->getLastModificationDateTime();
+
+                    if ($lastModified < $this->modifiedAfter) {
+                        return false;
+                    }
+                }
             }
 
             return true;
