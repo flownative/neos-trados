@@ -360,7 +360,7 @@ class ExportService extends AbstractService
         $this->xmlWriter->endElement();
     }
 
-    protected function writeProperty(string $propertyName, string $propertyValue): void
+    protected function writeProperty(string $propertyName, ?string $propertyValue = ''): void
     {
         $this->xmlWriter->startElement($propertyName);
         $this->xmlWriter->writeAttribute('type', 'string');
