@@ -320,7 +320,28 @@ class ImportService extends AbstractService
         ]);
 
         if ($currentNodeVariant === null) {
-            return;
+            /** @var \Neos\ContentRepository\Domain\Model\Node */
+            $node = $this->contentContext->getNodeByIdentifier($this->currentNodeIdentifier);
+            if ($node == null) {
+                # A node might have been deleted since the last Trados export
+                echo '[Warning] Node ID not found: <' . $this->currentNodeIdentifier . ">\n";
+                return;
+            }
+
+            $dimensionsForCurrentNodeVariant = [
+                $this->languageDimension => [$this->targetLanguage]
+            ];
+
+            /** @var \Neos\Neos\Domain\Service\ContentContext */
+            $targetContentContextForCurrentNodeVariant = $this->contentContextFactory->create([
+                'workspaceName' => $this->targetWorkspace->getName(),
+                'dimensions' => $dimensionsForCurrentNodeVariant,
+                'targetDimensions' => $targetDimensions,
+                'invisibleContentShown' => true,
+            ]);
+
+            $currentNodeVariant = $node->createVariantForContext($targetContentContextForCurrentNodeVariant);
+            $this->persistenceManager->persistAll();
         }
 
         $propertiesToSet = [];
